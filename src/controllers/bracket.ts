@@ -192,6 +192,8 @@ export abstract class BracketController {
 				const lastMatch = this._bracket.matchs[this._bracket.current_round][0];
 				const winner = lastMatch.winnedBy == WinnerTeam.UP ? lastMatch.upTeam?.players : lastMatch.downTeam?.players;
 				(Bot.guild.channels.resolve(Config.MatchListChannel) as Discord.TextChannel).send(`Les gagnants du tournoi sont ${winner?.map(x => x.discord).join(', ')}`);
+
+				TournamentController.EndTournament();
 			} else {
 				(Bot.guild.channels.resolve(Config.MatchListChannel) as Discord.TextChannel).send('Tous les matchs du tour sont terminés, en attente de la commande pour démarer le prochain tour');
 			}

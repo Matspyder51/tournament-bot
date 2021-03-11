@@ -164,7 +164,7 @@ export abstract class BracketController {
 		}
 	}
 
-	public static SetMatchResult(matchId: number, winnedBy: number): boolean {
+	public static SetMatchResult(matchId: number, winnedBy: number, force?: boolean): boolean {
 		const match = this._bracket.matchs[this._bracket.current_round][matchId];
 		if (!match)
 			return false;
@@ -172,8 +172,15 @@ export abstract class BracketController {
 		if (!match.downTeam || !match.upTeam)
 			return false;
 
-		if (match.winnedBy != undefined)
-			return false;
+		if (match.winnedBy != undefined) {
+			if (!force)
+				return false;
+
+			else {
+				this._bracket.qualified_teams.splice(this._bracket.qualified_teams.findIndex(x => x == (match.winnedBy == WinnerTeam.UP ? match.upTeam : match.downTeam)), 1);
+				match.winnedBy = undefined;
+			}
+		}
 
 		if (winnedBy == 0) {
 			match.winnedBy = WinnerTeam.UP;
@@ -188,7 +195,7 @@ export abstract class BracketController {
 		const isAllMatchsEnded = this._bracket.matchs[this._bracket.current_round].find(x => x.winnedBy == undefined) == null;
 
 		if (isAllMatchsEnded) {
-			if (this._bracket.matchs[this._bracket.current_round].length == 1) {
+			if (this._bracket.matchs[this._bracket.current_round].length == 1 && this._bracket.qualified_teams.length < 2) {
 				const lastMatch = this._bracket.matchs[this._bracket.current_round][0];
 				const winner = lastMatch.winnedBy == WinnerTeam.UP ? lastMatch.upTeam?.players : lastMatch.downTeam?.players;
 				(Bot.guild.channels.resolve(Config.MatchListChannel) as Discord.TextChannel).send(`Les gagnants du tournoi sont ${winner?.map(x => x.discord).join(', ')}`);
@@ -214,7 +221,7 @@ RegisterCommand('set_win', async (from: Discord.GuildMember, args: string[], mes
 	if (!BracketController.bracket.matchs[BracketController.bracket.current_round][matchId])
 		return;
 
-	BracketController.SetMatchResult(matchId, team);
+	BracketController.SetMatchResult(matchId, team, true);
 
 	message.delete();
 }, true);

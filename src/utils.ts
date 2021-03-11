@@ -7,7 +7,25 @@ const words = [
 	'octane',
 	'fennec',
 	'dominus',
-	'tournoi'
+	'breakout',
+	'boost',
+	'dribble',
+	'shot',
+	'kickoff',
+	'scarab',
+	'gizmo',
+	'artyrus',
+	'overtime',
+	'reward',
+	'challenge',
+	'dropshot',
+	'rumble',
+	'hoops',
+	'snowday',
+	'eversax',
+	'radosin',
+	'zen',
+	'yukiss'
 ]
 
 export function GetRandomWord(): string {

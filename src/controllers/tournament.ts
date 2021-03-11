@@ -253,6 +253,20 @@ export abstract class TournamentController {
 		return true;
 	}
 
+	public static EndTournament() {
+		if (this._state != TournamentState.CLOSED)
+			return;
+
+		this._state = TournamentState.CLOSED;
+	}
+
+	public static ResetTournament() {
+		this._participants = [];
+		this._teams = [];
+		this.participantsMsg = [];
+		this.teamMsg = [];
+	}
+
 }
 
 function SetDebugParticipants(from: Discord.GuildMember) {
@@ -270,6 +284,8 @@ RegisterCommand('participants', async (from: Discord.GuildMember, args: string[]
 RegisterCommand('open', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
 	if (TournamentController.state != TournamentState.CLOSED)
 		return message.reply("Un tournoi est déjà en cours");
+
+	TournamentController.ResetTournament();
 
 	if (DEBUG_MODE)
 		SetDebugParticipants(from);

@@ -1,0 +1,41 @@
+body {
+	background: #16a085;
+	display: flex;
+  flex-flow: row;
+  flex-basis: auto;
+  min-height: 100vh;
+}
+
+.round:first-child {
+	margin: 0;
+}
+
+.round {
+  display: flex;
+  flex-flow: column;
+  width: 15%;
+	justify-content: space-around;
+	margin-left: 100px;
+}
+
+.round.round-two, .round.round-three {
+  justify-content: space-around;
+}
+
+.matchup {
+  margin-bottom: 25%;
+}
+
+.team-top {
+	border: 1px solid black;
+	padding: .2em;
+  padding-left: .5em;
+}
+
+.team-bottom {
+	border: 1px solid black;
+	padding: .2em;
+  padding-left: .5em;
+}
+
+

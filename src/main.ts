@@ -2,18 +2,12 @@ import * as Discord from 'discord.js';
 import { EventEmitter } from 'events';
 import { GetCommand } from './commands';
 
-import "./tournament";
-import { LoadRanksEmojis } from './tournament';
+// import "./tournament";
+import "./controllers/tournament";
+import { LoadRanksEmojis } from './models/rank';
+import * as Config from './config.json';
 
-const TOKEN = "ODA1Mjg0ODc3MDY2NTY3NzQx.YBYp_A.spDcHTqfo0YERVk1bidiAY3od04";
-
-export const GUILD_ID = "766876060960555050";
-
-export const DEBUG_MODE = true;
-
-export function GetRandomNumber(min: number, max: number): number {
-  return Math.random() * (max - min) + min;
-}
+export const DEBUG_MODE = Config.DebugMode;
 
 class Bot extends EventEmitter {
 
@@ -22,17 +16,24 @@ class Bot extends EventEmitter {
 		return this._client;
 	}
 
+	private _guild!: Discord.Guild;
+	public get guild(): Discord.Guild {
+		return this._guild;
+	}
+
 	constructor() {
 		super();
 
 		this._client = new Discord.Client();
 		this.ListenEvents();
-		this._client.login(TOKEN);
+		this._client.login(Config.BotToken);
 	}
 
 	private ListenEvents() {
-		this._client.on('ready', () => {
+		this._client.on('ready', async () => {
 			console.log("Bot is ready");
+
+			this._guild = await this._client.guilds.fetch(Config.GuildId);
 
 			LoadRanksEmojis();
 		});
@@ -41,7 +42,7 @@ class Bot extends EventEmitter {
 	}
 
 	private OnMessage(message: Discord.Message) {
-		if (message.author.bot || !message.guild || message.guild.id != GUILD_ID)
+		if (message.author.bot || !message.guild || message.guild.id != Config.GuildId)
 			return;
 		const isCommand = message.content.startsWith('!');
 		if (isCommand) {
@@ -58,7 +59,20 @@ class Bot extends EventEmitter {
 					return;
 			}
 
-			command.onExec(message.member, args, message)
+			if (command.isParent && command.subCommands != null && command.subCommands.length > 0 && args.length > 0) {
+				const sub = command.subCommands.find(x => x.name === args[0]);
+
+				if (!sub)
+					return;
+
+				sub.onExec(message.member, args.slice(1), message);
+
+				return;
+			}
+
+			if (command.onExec != null)
+				command.onExec(message.member, args, message);
+
 			return;
 		}
 	}

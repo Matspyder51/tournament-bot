@@ -94,7 +94,7 @@ export abstract class BracketController {
 			}
 			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''} **VS** `;
 			isFirst2 = true;
-			desc += `${!isFirst ? '\n' : ''}${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
+			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
 			for (const player of match.downTeam.players) {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
@@ -127,12 +127,15 @@ export abstract class BracketController {
 
 	public static async SendMatchesInformations() {
 		let isFirst = true;
-		let desc = '';
-
 		const guild = Bot.guild;
 		const chan = await guild.channels.resolve(Config.Admin.MatchesLogsChannel);
 
+		if (chan && chan.isText()) {
+			chan.send(`Identifiants des matchs du tour N°${this._bracket.current_round + 1}`);
+		}
+
 		for (const match of this._bracket.matchs[this._bracket.current_round]) {
+			let desc = '';
 			if (!match.upTeam || !match.downTeam)
 				continue;
 

@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "tsc -p ./src/ -w",
+    "build": "tsc -p ./src/",
     "start": "node ./dist/main.js"
   },
   "dependencies": {

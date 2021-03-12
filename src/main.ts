@@ -1,15 +1,12 @@
-import * as Discord from 'discord.js';
-import { EventEmitter } from 'events';
-import { GetCommand } from './commands';
-
-// import "./tournament";
-import "./controllers/tournament";
-import { LoadRanksEmojis } from './models/rank';
 import * as Config from './config.json';
+import * as Discord from 'discord.js';
+import { GetCommand } from './commands';
+import { LoadRanksEmojis } from './models/rank';
+import "./controllers/tournament";
 
 export const DEBUG_MODE = Config.DebugMode;
 
-class Bot extends EventEmitter {
+class Bot {
 
 	private _client: Discord.Client;
 	public get Client(): Discord.Client {
@@ -22,8 +19,6 @@ class Bot extends EventEmitter {
 	}
 
 	constructor() {
-		super();
-
 		this._client = new Discord.Client();
 		this.ListenEvents();
 		this._client.login(Config.BotToken);

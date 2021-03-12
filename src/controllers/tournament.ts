@@ -238,7 +238,7 @@ export abstract class TournamentController {
 	}
 
 	public static OpenRegistrations(reopen?: boolean): boolean {
-		if (this._state != TournamentState.CLOSED && !reopen)
+		if (this._state != TournamentState.CLOSED && (!reopen || this._state != TournamentState.WAITING))
 			return false;
 
 		this._state = TournamentState.REGISTERING;
@@ -295,7 +295,7 @@ RegisterCommand('open', (from: Discord.GuildMember, args: string[], message: Dis
 }, true);
 
 RegisterCommand('reopen', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	if (TournamentController.state != TournamentState.REGISTERING)
+	if (TournamentController.state != TournamentState.WAITING)
 		return message.reply("Impossible, les matchs on déjà commencés");
 
 	if (TournamentController.OpenRegistrations(true))

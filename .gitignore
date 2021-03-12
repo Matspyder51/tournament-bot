@@ -90,3 +90,5 @@ typings/
 dist/
 
 config.json
+
+yarn.lock

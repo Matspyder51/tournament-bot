@@ -77,9 +77,7 @@ export abstract class BracketController {
 		if (!chan || !chan.isText())
 			return;
 		
-		const embed = new Discord.MessageEmbed();
-		embed.setTitle(`Liste des matchs du tour ${this._bracket.current_round + 1} :`);
-		let desc = '';
+		let desc = `Liste des matchs du tour ${this._bracket.current_round + 1} :`;
 
 		let isFirst = true;
 		for (let i = 0; i < this._bracket.matchs[this._bracket.current_round].length; i++) {
@@ -102,19 +100,19 @@ export abstract class BracketController {
 			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
 			isFirst = false;
 		}
-		embed.setDescription(desc);
 
 		if (!forceNew && this.matchesListMsg)
-			this.matchesListMsg.edit(embed);
+			this.matchesListMsg.edit(desc);
 		else {
-			this.matchesListMsg = await chan.send(embed);
+			this.matchesListMsg = await chan.send(desc);
 
 			if (this._bracket.qualified_teams.length > 0) {
+				const embed = new Discord.MessageEmbed();
 				embed.setTitle('Équipes qualifiées :');
 				let desc = '';
 				let isFirst = true;
 				for (const team of this._bracket.qualified_teams) {
-					desc += `${!isFirst ? '\n' : ''}${team.toString()}`;
+					desc += `${!isFirst ? '\n' : ''}- ${team.toString()}`;
 					isFirst = false;
 				}
 

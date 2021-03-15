@@ -330,7 +330,7 @@ RegisterCommand('register', (from: Discord.GuildMember, args: string[], message:
 	}
 });
 
-RegisterCommand('leave', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+RegisterCommand('quit', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
 	if (TournamentController.RemoveParticipant(from))
 		message.reply("Vous vous êtes désinscrit du tournoi");
 	else

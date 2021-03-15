@@ -77,7 +77,7 @@ export abstract class BracketController {
 		if (!chan || !chan.isText())
 			return;
 		
-		let desc = `Liste des matchs du tour ${this._bracket.current_round + 1} :`;
+		let desc = `Liste des matchs du tour ${this._bracket.current_round + 1} :\n`;
 
 		let isFirst = true;
 		for (let i = 0; i < this._bracket.matchs[this._bracket.current_round].length; i++) {
@@ -90,7 +90,7 @@ export abstract class BracketController {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 			}
-			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''} **VS** `;
+			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''}\t:crossed_swords:\t`;
 			isFirst2 = true;
 			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
 			for (const player of match.downTeam.players) {

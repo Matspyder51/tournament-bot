@@ -25,7 +25,7 @@ export abstract class BracketController {
 	}
 
 	private static current_teams: Team[] = [];
-	private static matchesListMsg: Discord.Message;
+	private static matchesListMsg: Discord.Message[];
 
 	public static Initialize() {
 		this.current_teams = [...TournamentController.teams];
@@ -77,34 +77,51 @@ export abstract class BracketController {
 		if (!chan || !chan.isText())
 			return;
 		
+		let messages = []
 		let desc = `Liste des matchs du tour ${this._bracket.current_round + 1} :\n`;
 
 		let isFirst = true;
 		for (let i = 0; i < this._bracket.matchs[this._bracket.current_round].length; i++) {
 			const match = this._bracket.matchs[this._bracket.current_round][i];
+			let toAdd = '';
 			if (!match.upTeam || !match.downTeam)
 				continue;
-			desc += `${!isFirst ? '\n' : ''}${i} : ${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''}`;
+			toAdd += `${!isFirst ? '\n' : ''}${i} : ${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''}`;
 			let isFirst2 = true;
 			for (const player of match.upTeam.players) {
-				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
+				toAdd += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 			}
-			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''}\t:crossed_swords:\t`;
+			toAdd += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''}\t:crossed_swords:\t`;
 			isFirst2 = true;
-			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
+			toAdd += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
 			for (const player of match.downTeam.players) {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 			}
-			desc += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
+			toAdd += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
 			isFirst = false;
+
+			if (desc.length + toAdd.length > 2000) {
+				messages.push(desc);
+				desc = '';
+			} else {
+				desc += toAdd;
+			}
 		}
 
-		if (!forceNew && this.matchesListMsg)
-			this.matchesListMsg.edit(desc);
-		else {
-			this.matchesListMsg = await chan.send(desc);
+		if (!forceNew && this.matchesListMsg) {
+			messages.forEach(async (msg, index) => {
+				if (this.matchesListMsg[index] == null) {
+					this.matchesListMsg[index] = await chan.send(msg);
+				} else {
+					this.matchesListMsg[index].edit(msg);
+				}
+			});
+		} else {
+			messages.forEach(async (msg, index) => {
+				this.matchesListMsg[index] = await chan.send(msg);
+			});
 
 			if (this._bracket.qualified_teams.length > 0) {
 				const embed = new Discord.MessageEmbed();

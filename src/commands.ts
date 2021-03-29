@@ -41,7 +41,7 @@ export function RegisterSubCommand(parent: string, name: string, callback: (from
 }
 
 export function GetCommand(name: string): Command | undefined {
-	const cmd = commands.find(x => x.name === name);
+	const cmd = commands.find(x => x.name === name.toLowerCase());
 
 	return cmd;
 }

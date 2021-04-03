@@ -156,7 +156,7 @@ export abstract class BracketController {
 			if (!match.upTeam || !match.downTeam)
 				continue;
 
-			const roomName = `${GetRandomWord()}-${GetRandomWord()}`;
+			const roomName = `${GetRandomWord()}`;
 			const roomPassword = GetRandomWord();
 			desc += `${!isFirst ? '\n' : ''}`;
 			let isFirst2 = true;

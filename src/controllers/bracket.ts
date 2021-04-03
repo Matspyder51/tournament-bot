@@ -110,6 +110,8 @@ export abstract class BracketController {
 			}
 		}
 
+		messages.push(desc);
+
 		if (!forceNew && this.matchesListMsg) {
 			messages.forEach(async (msg, index) => {
 				if (this.matchesListMsg[index] == null) {

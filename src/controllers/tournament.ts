@@ -195,7 +195,6 @@ export abstract class TournamentController {
 				currentMsgIndex++;
 				messages[currentMsgIndex] = new Discord.MessageEmbed();
 				desc = '';
-				isFirst = true;
 			}
 			desc += toAdd;
 		});

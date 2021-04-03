@@ -168,7 +168,7 @@ export abstract class BracketController {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 				if (!DEBUG_MODE)
-					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **${roomName}\n**Mot de passe: **${roomPassword}`);
+					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **||${roomName}||\n**Mot de passe: **||${roomPassword}||`);
 			}
 			desc += ' **VS** ';
 			isFirst2 = true;
@@ -176,7 +176,7 @@ export abstract class BracketController {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 				if (!DEBUG_MODE)
-					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **${roomName}\n**Mot de passe: **${roomPassword}`);
+					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **||${roomName}||\n**Mot de passe: **||${roomPassword}||`);
 			}
 			isFirst = false;
 			desc += `||${roomName}|| ||${roomPassword}||`;

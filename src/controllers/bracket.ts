@@ -1,7 +1,7 @@
 import { Match, WinnerTeam } from '../models/matchs';
 import { TournamentController } from './tournament';
 import { Team } from '../models/team';
-import { Bot } from '../main';
+import { Bot, DEBUG_MODE } from '../main';
 import * as Discord from 'discord.js';
 import { GetRandomWord, GetRandomNumber } from '../utils';
 import { RegisterCommand } from '../commands';
@@ -25,7 +25,7 @@ export abstract class BracketController {
 	}
 
 	private static current_teams: Team[] = [];
-	private static matchesListMsg: Discord.Message[];
+	private static matchesListMsg: Discord.Message[] = [];
 
 	public static Initialize() {
 		this.current_teams = [...TournamentController.teams];
@@ -83,10 +83,11 @@ export abstract class BracketController {
 		let isFirst = true;
 		for (let i = 0; i < this._bracket.matchs[this._bracket.current_round].length; i++) {
 			const match = this._bracket.matchs[this._bracket.current_round][i];
-			let toAdd = '';
+			let toAdd = `${!isFirst ? '\n' : ''}`;
+			toAdd += `${i} : `;
 			if (!match.upTeam || !match.downTeam)
 				continue;
-			toAdd += `${!isFirst ? '\n' : ''}${i} : ${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''}`;
+			toAdd += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.DOWN ? '~~' : ''}`;
 			let isFirst2 = true;
 			for (const player of match.upTeam.players) {
 				toAdd += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
@@ -96,7 +97,7 @@ export abstract class BracketController {
 			isFirst2 = true;
 			toAdd += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
 			for (const player of match.downTeam.players) {
-				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
+				toAdd += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 			}
 			toAdd += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
@@ -105,14 +106,13 @@ export abstract class BracketController {
 			if (desc.length + toAdd.length > 2000) {
 				messages.push(desc);
 				desc = '';
-			} else {
-				desc += toAdd;
 			}
+			desc += toAdd;
 		}
 
 		messages.push(desc);
 
-		if (!forceNew && this.matchesListMsg) {
+		if (!forceNew && this.matchesListMsg.length > 0) {
 			messages.forEach(async (msg, index) => {
 				if (this.matchesListMsg[index] == null) {
 					this.matchesListMsg[index] = await chan.send(msg);
@@ -162,18 +162,21 @@ export abstract class BracketController {
 			let isFirst2 = true;
 			for (const player of match.upTeam.players) {
 				if (isFirst2) {
-					(await player.discord?.createDM())?.send("En tant que Capitaine de ton équipe, c'est a toi de créer la partie privée");
+					if (!DEBUG_MODE)
+						(await player.discord?.createDM())?.send("En tant que Capitaine de ton équipe, c'est a toi de créer la partie privée");
 				}
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
-				(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **${roomName}\n**Mot de passe: **${roomPassword}`);
+				if (!DEBUG_MODE)
+					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **${roomName}\n**Mot de passe: **${roomPassword}`);
 			}
 			desc += ' **VS** ';
 			isFirst2 = true;
 			for (const player of match.downTeam.players) {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
-				(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **${roomName}\n**Mot de passe: **${roomPassword}`);
+				if (!DEBUG_MODE)
+					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **${roomName}\n**Mot de passe: **${roomPassword}`);
 			}
 			isFirst = false;
 			desc += `||${roomName}|| ||${roomPassword}||`;

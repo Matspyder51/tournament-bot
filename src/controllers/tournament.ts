@@ -269,7 +269,7 @@ export abstract class TournamentController {
 }
 
 function SetDebugParticipants(from: Discord.GuildMember) {
-	for (let i = 0; i < Math.floor(GetRandomNumber(35, 50)); i++) {
+	for (let i = 0; i < Math.floor(GetRandomNumber(50, 100)); i++) {
 		const nbr = Math.floor(GetRandomNumber(0, Ranks.length - 1));
 		const rank = Ranks[nbr];
 		TournamentController.AddParticipant(from, rank, true);
@@ -381,4 +381,18 @@ RegisterSubCommand('team', 'delete', (from: Discord.GuildMember, args: string[],
 
 RegisterCommand('start', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
 	BracketController.Initialize();
+}, true);
+
+
+RegisterCommand('maketeams', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+	if (DEBUG_MODE) {
+		const _temp_teams = [...TournamentController.participants];
+		const _temp_teams2 = [...TournamentController.participants];
+		for (let i = 0; i < Math.floor(_temp_teams.length / 2); i++) {
+			TournamentController.AddTeam([i, _temp_teams2.length - 1]);
+			_temp_teams2.splice(i, 1);
+			_temp_teams2.splice(_temp_teams.length - 1, 1);
+		}
+		TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
+	}
 }, true);

@@ -98,14 +98,19 @@ export abstract class TournamentController {
 		return true;
 	}
 
-	public static RemoveParticipant(discord: Discord.GuildMember): boolean {
-		if (this._state != TournamentState.REGISTERING)
+	public static RemoveParticipant(discord: Discord.GuildMember, force: boolean = false): boolean {
+		if (force || this._state != TournamentState.REGISTERING)
 			return false;
 
 		if (!this.IsPlayerInTournament(discord))
 			return false;
 
 		this._participants.splice(this._participants.findIndex(x => x.discord == discord), 1);
+
+		const team = this.teams.findIndex(x => x.players.find(y => y.discord == discord));
+		if (team != null) {
+			this.DeleteTeam(team);
+		}
 
 		const channel = Bot.guild.channels.resolve(Config.Admin.RegisterLogsChannel);
 		if (channel != null && channel.isText()) {
@@ -277,7 +282,8 @@ function SetDebugParticipants(from: Discord.GuildMember) {
 }
 
 RegisterCommand('participants', async (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	TournamentController.FormatParticipantsToDiscord(message.channel as Discord.TextChannel);
+	// TournamentController.FormatParticipantsToDiscord(message.channel as Discord.TextChannel);
+	TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
 }, true);
 
 RegisterCommand('open', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
@@ -337,11 +343,19 @@ RegisterCommand('quit', (from: Discord.GuildMember, args: string[], message: Dis
 });
 
 RegisterCommand('kick', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	if (message.mentions.members == null)
-		return message.reply('Veuillez mentionner le joueur que vous voulez kick');
+	if (args.length != 1)
+		return message.reply("Veuillez précisé le N° du joueur a kick");
 
-	if (TournamentController.RemoveParticipant(message.mentions.members.first() as Discord.GuildMember))
-		message.reply(`${message.mentions.members.first()} a été kick du tournoi`);
+	const index = Number(args[0])
+	if (index == NaN)
+		return message.reply("Ce paramètre n'est pas un chiffre");
+
+	const participant = TournamentController.participants[index];
+	if (!participant)
+		return;
+
+	if (TournamentController.RemoveParticipant((participant.discord as Discord.GuildMember), true))
+		message.reply(`${participant.discord} a été kick du tournoi`);
 	else
 		message.reply("Une erreur est survenue");
 }, true);

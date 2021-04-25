@@ -80,10 +80,10 @@ export abstract class TournamentController {
 	public static AddParticipant(discord: Discord.GuildMember, rank: Rank, force = false): string | true {
 		if (!force) {
 			if (this._state != TournamentState.REGISTERING)
-				return 'Too late, try with another tournament';
+				return 'Aucun tournoi sur lequel vous inscrire actuellement';
 
 			if (this.IsPlayerInTournament(discord))
-				return 'Allready in tournament';
+				return 'Vous êtes déjà inscrit dans le tournoi';
 		}
 
 		this._participants.push(new Participant(discord, rank));

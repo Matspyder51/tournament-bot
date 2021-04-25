@@ -425,7 +425,7 @@ RegisterCommand('setrank', (from: Discord.GuildMember, args: string[], message: 
 		return;
 
 	participant.setRank(rank);
-});
+}, true);
 
 RegisterCommand('addplayer', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
 	const ply = message.mentions.members?.first();
@@ -442,4 +442,4 @@ RegisterCommand('addplayer', (from: Discord.GuildMember, args: string[], message
 		return message.reply(added);
 
 	message.reply('Joueur ajouté');
-});
+}, true);

@@ -426,3 +426,20 @@ RegisterCommand('setrank', (from: Discord.GuildMember, args: string[], message: 
 
 	participant.setRank(rank);
 });
+
+RegisterCommand('addplayer', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+	const ply = message.mentions.members?.first();
+
+	if (ply == null)
+		return;
+
+	const rank = Ranks.find(x => x.name === args[1].toLowerCase() || x.aliases.includes(args[1].toLowerCase()));
+	if (!rank)
+		return message.reply('Rank introuvable');
+
+	const added = TournamentController.AddParticipant(ply, rank);
+	if (typeof added == 'string')
+		return message.reply(added);
+
+	message.reply('Joueur ajouté');
+});

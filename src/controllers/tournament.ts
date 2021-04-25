@@ -410,3 +410,19 @@ RegisterCommand('maketeams', (from: Discord.GuildMember, args: string[], message
 		TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
 	}
 }, true);
+
+RegisterCommand('setrank', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+	const ply = Number(args[0]);
+	if (ply == NaN)
+		return;
+
+	const rank = Ranks.find(x => x.name === args[1].toLowerCase() || x.aliases.includes(args[1].toLowerCase()));
+	if (!rank)
+		return message.reply('Rank introuvable');
+
+	const participant = TournamentController.participants[ply];
+	if (!participant)
+		return;
+
+	participant.setRank(rank);
+});

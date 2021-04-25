@@ -31,6 +31,10 @@ export class Participant {
 		this._inTeam = false;
 	}
 
+	public setRank(newRank: Rank) {
+		this._rank = newRank;
+	}
+
 	public toString(checkIfFree = false, long = false) {
 		return `${checkIfFree && this._inTeam ? '~~' : ''}${this._discord} - ${this._rank.emoji}${long ? ' ' + this._rank.label : ''}${checkIfFree && this._inTeam ? '~~' : ''}`;
 	}

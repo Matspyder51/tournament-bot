@@ -72,14 +72,14 @@ function generateTeam(players: Player[], metrics: TeamsMetrics, maxTeamSize: num
     players.splice(players.findIndex(f => f.discord?.user.id === p1.discord?.user.id), 1);
     let tMetrics = teamMetrics(team);
     while (
-        (tMetrics.teamCombineMmr * 100 / metrics.average > 115 ||
-        tMetrics.teamCombineMmr * 100 / metrics.average < 85) &&
+        (tMetrics.teamCombineMmr * 100 / metrics.average > 110 ||
+        tMetrics.teamCombineMmr * 100 / metrics.average < 90) &&
         p.length > 0 && team.length < maxTeamSize
     )
     {
         p = p.filter(p2 => {
             //@ts-ignore
-            return (p2.mmr + tMetrics.teamCombineMmr) * 100 / metrics.average < 115
+            return (p2.mmr + tMetrics.teamCombineMmr) * 100 / metrics.average < 110
         })
         if (p.length > 0) {
             const p2 = p[getRandomInt(p.length)]

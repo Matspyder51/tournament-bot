@@ -27,7 +27,7 @@ export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3, 
     const tabs = [];
 
     for (let i = 0; i < 10000; i++) {
-        tabs.push(generateTeams(players, [], ranks, modifier));
+        tabs.push(generateTeams(players, [], ranks, maxTeamSize, modifier));
     }
 
     let best = tabs[1];
@@ -41,7 +41,7 @@ export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3, 
     return best;
 }
 
-function generateTeams(players: Player[], teams: Team[], ranks: Rank[], modifier: number): Team[] {
+function generateTeams(players: Player[], teams: Team[], ranks: Rank[], maxTeamSize: number, modifier: number): Team[] {
     const highestRank = findHighestRank(players, ranks, modifier);
 
     if (highestRank !== null) {
@@ -54,7 +54,7 @@ function generateTeams(players: Player[], teams: Team[], ranks: Rank[], modifier
 
     for(let i = 0; players.length > 0 && i < 20; i++) {
         const metrics = teamsMetrics(teams);
-        const team = generateTeam(players, metrics);
+        const team = generateTeam(players, metrics, maxTeamSize);
         if (team.length > 0) {
             teams.push(team);
             players = players.filter(player => team.find(p => p.discord?.user.id === player.discord?.user.id) === undefined);
@@ -64,7 +64,7 @@ function generateTeams(players: Player[], teams: Team[], ranks: Rank[], modifier
     return teams
 }
 
-function generateTeam(players: Player[], metrics: TeamsMetrics): Team {
+function generateTeam(players: Player[], metrics: TeamsMetrics, maxTeamSize: number): Team {
     const team = [];
     let p = players;
     const p1 = players[getRandomInt(p.length)];
@@ -74,7 +74,7 @@ function generateTeam(players: Player[], metrics: TeamsMetrics): Team {
     while (
         (tMetrics.teamCombineMmr * 100 / metrics.average > 115 ||
         tMetrics.teamCombineMmr * 100 / metrics.average < 85) &&
-        p.length > 0 && team.length < 3
+        p.length > 0 && team.length < maxTeamSize
     )
     {
         p = p.filter(p2 => {

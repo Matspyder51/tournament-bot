@@ -52,7 +52,7 @@ function generateTeams(players: Player[], teams: Team[], ranks: Rank[], maxTeamS
         players = players.filter(player => player.rank.name !== highestRank);
     }
 
-    for(let i = 0; players.length > 0 && i < 20; i++) {
+    for(let i = 0; players.length > 0 && i < 1000; i++) {
         const metrics = teamsMetrics(teams);
         const team = generateTeam(players, metrics, maxTeamSize);
         if (team.length > 0) {

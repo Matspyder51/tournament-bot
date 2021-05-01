@@ -7,6 +7,7 @@ import { Team } from '../models/team';
 import { BracketController } from './bracket';
 import { GetRandomNumber } from '../utils';
 import * as Config from '../config.json';
+import { main } from '../services/generateTeams';
 
 
 enum TournamentState {
@@ -38,6 +39,10 @@ export abstract class TournamentController {
 	private static teamMsg: Discord.Message[];
 
 	public static AddTeam(membersIndexes: number[]): Team | undefined {
+		if (membersIndexes.length === 0 ) {
+			return;
+		}
+
 		const teamMembers: Participant[] = [];
 		
 		for (const member of membersIndexes) {
@@ -391,6 +396,61 @@ RegisterSubCommand('team', 'delete', (from: Discord.GuildMember, args: string[],
 	TournamentController.DeleteTeam(teamIdx);
 
 	TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
+}, true);
+
+RegisterSubCommand('team', 'clear', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+
+	message.delete();
+
+	if (TournamentController.state != TournamentState.WAITING)
+		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
+
+	TournamentController.teams.forEach((team, index) => {
+		TournamentController.DeleteTeam(index);
+	})
+
+	TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
+}, true);
+
+
+RegisterSubCommand("team", "roll", (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+	if (TournamentController.state != TournamentState.WAITING)
+		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
+	else {
+
+		const maxTeamSize = Number(args[0]);
+		const rankingModifier = Number(args[1]);
+
+		if (maxTeamSize == NaN)
+			return message.reply("Veuillez preciser la taille maximum des equipes");
+
+		if (maxTeamSize > 4)
+			return message.reply("La taille des equipes ne peut pas depasser 4 joueurs");
+			
+		// reset teams
+
+		TournamentController.teams.forEach((team, index) => {
+			TournamentController.DeleteTeam(index);
+		})
+
+		// generate teams
+		const teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier || 60);
+		
+		for (const team of teams) {
+			const playersIndex: number[] = [];
+			for (const player of team) {
+				const a = TournamentController.participants.findIndex(p => {
+					return p.discord?.id === player.discord?.id
+				})
+				if (a !== -1) playersIndex.push(a);
+			}
+			const newTeam = TournamentController.AddTeam(playersIndex);
+			
+			if (!newTeam) return message.reply('Une erreur est survenue');
+		}
+
+		TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
+	}
 }, true);
 
 RegisterCommand('start', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {

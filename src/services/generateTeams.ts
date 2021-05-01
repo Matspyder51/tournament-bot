@@ -21,7 +21,7 @@ interface TeamsMetrics {
     median: number
 }
 
-export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3,  modifier: number = 40): Team[] {
+export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3,  modifier: number = 60): Team[] {
     players = computePlayersMmr(players, ranks, modifier);
     
     const tabs = [];
@@ -52,7 +52,7 @@ function generateTeams(players: Player[], teams: Team[], ranks: Rank[], maxTeamS
         players = players.filter(player => player.rank.name !== highestRank);
     }
 
-    for(let i = 0; players.length > 0 && i < 1000; i++) {
+    for(let nbTeams = 0; players.length > 0 && nbTeams < 1000; nbTeams++) {
         const metrics = teamsMetrics(teams);
         const team = generateTeam(players, metrics, maxTeamSize);
         if (team.length > 0) {

@@ -1,6 +1,6 @@
 import * as Config from './config.json';
 import * as Discord from 'discord.js';
-import { GetCommand } from './commands';
+import { GetCommand, LoadAllCommands } from './commands';
 import { LoadRanksEmojis } from './models/rank';
 import "./controllers/tournament";
 
@@ -18,58 +18,47 @@ class Bot {
 		return this._guild;
 	}
 
+	private _ready: boolean = false;
+	public get Ready(): boolean {
+		return this._ready;
+	}
+
 	constructor() {
-		this._client = new Discord.Client();
+		this._client = new Discord.Client({
+			intents: 'GUILDS'
+		});
 		this.ListenEvents();
 		this._client.login(Config.BotToken);
 	}
 
 	private ListenEvents() {
 		this._client.on('ready', async () => {
-			console.log("Bot is ready");
-
 			this._guild = await this._client.guilds.fetch(Config.GuildId);
 
 			LoadRanksEmojis();
+
+			// await this._guild.commands.set([]);
+
+			this._ready = true;
+			LoadAllCommands();
+
+			this._client.on('interaction', (interaction: Discord.Interaction) => {
+				if (!interaction.isCommand())
+					return;
+
+				const cmd = GetCommand(interaction.commandName);
+				if (!cmd || !cmd.onExec)
+					return;
+
+				const member = (<Discord.GuildMember>interaction.member);
+				if (cmd.isAdmin && (!member.permissions.has('ADMINISTRATOR') && !member.roles.cache.has(Config.Admin.AdminCommandsRoleId)))
+					return interaction.reply('Vous n\'avez pas la permission');
+
+				cmd.onExec(interaction, interaction.options);
+			});
+
+			console.log("Bot is ready");
 		});
-
-		this._client.on('message', this.OnMessage.bind(this));
-	}
-
-	private OnMessage(message: Discord.Message) {
-		if (message.author.bot || !message.guild || message.guild.id != Config.GuildId)
-			return;
-		const isCommand = message.content.startsWith('!');
-		if (isCommand) {
-
-			const cmd: string = message.content.split(' ')[0].substr(1);
-			const args: Array<string> = message.content.split(' ').slice(1);
-
-			const command = GetCommand(cmd);
-			if (!command)
-				return;
-
-			if (command.isAdmin || !message.member) {
-				if (!message.member?.hasPermission(Discord.Permissions.FLAGS.ADMINISTRATOR))
-					return;
-			}
-
-			if (command.isParent && command.subCommands != null && command.subCommands.length > 0 && args.length > 0) {
-				const sub = command.subCommands.find(x => x.name === args[0]);
-
-				if (!sub)
-					return;
-
-				sub.onExec(message.member, args.slice(1), message);
-
-				return;
-			}
-
-			if (command.onExec != null)
-				command.onExec(message.member, args, message);
-
-			return;
-		}
 	}
 
 }

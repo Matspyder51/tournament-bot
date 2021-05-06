@@ -1,7 +1,7 @@
 import { Participant } from '../models/participant';
 import * as Discord from 'discord.js';
 import { Rank, Ranks } from '../models/rank';
-import { RegisterCommand, RegisterSubCommand } from '../commands';
+import { Command } from '../commands';
 import { Bot, DEBUG_MODE } from '../main';
 import { Team } from '../models/team';
 import { BracketController } from './bracket';
@@ -78,6 +78,14 @@ export abstract class TournamentController {
 		return true;
 	}
 
+	public static ClearTeams() {
+		this._teams.forEach((team) => {
+			team.players.forEach(x => x.removeFromTeam());
+		});
+
+		this._teams = [];
+	}
+
 	public static IsPlayerInTournament(player: Discord.GuildMember): boolean {
 		return this._participants.find(a => a.discord == player) != null;
 	}
@@ -86,10 +94,10 @@ export abstract class TournamentController {
 		if (!force) {
 			if (this._state != TournamentState.REGISTERING)
 				return 'Aucun tournoi sur lequel vous inscrire actuellement';
-
-			if (this.IsPlayerInTournament(discord))
-				return 'Vous êtes déjà inscrit dans le tournoi';
 		}
+
+		if (!DEBUG_MODE && this.IsPlayerInTournament(discord))
+			return 'Vous êtes déjà inscrit dans le tournoi';
 
 		this._participants.push(new Participant(discord, rank));
 
@@ -104,7 +112,7 @@ export abstract class TournamentController {
 	}
 
 	public static RemoveParticipant(discord: Discord.GuildMember, force: boolean = false): boolean {
-		if (force || this._state != TournamentState.REGISTERING)
+		if (!force && this._state != TournamentState.REGISTERING)
 			return false;
 
 		if (!this.IsPlayerInTournament(discord))
@@ -129,14 +137,14 @@ export abstract class TournamentController {
 		let currIndex = 0;
 		let msgs: Discord.MessageEmbed[] = [];
 		msgs[0] = new Discord.MessageEmbed();
-		msgs[currIndex].setTitle(`Liste des participants (${this._participants.length}) :`);
+		msgs[currIndex].setTitle(`Liste des participants (${this._participants.length} participants) :`);
 
 		let isFirst = true;
 		let desc = '';
 
 		this.participants.forEach((player, index) => {
 			let toAdd = '';
-			toAdd += `${!isFirst ? '\n': ''}${player.inTeam ? '~~' : ''}${index} : ${player.discord} - ${player.rank.emoji} ${player.rank.label}${player.inTeam ? '~~' : ''}`;
+			toAdd += `${!isFirst ? '\n': ''}${player.inTeam ? '~~' : ''}${index + 1} : ${player.discord} - ${player.rank.emoji} ${player.rank.label}${player.inTeam ? '~~' : ''}`;
 			isFirst = false;
 
 			if (toAdd.length + desc.length > 2000) {
@@ -155,7 +163,7 @@ export abstract class TournamentController {
 			channel = channel || (this.participantsMsg[0].channel as Discord.TextChannel);
 			if (channel == null)
 				return msgs;
-			if (this.participantsMsg == null || this.participantsMsg.length == 0) {
+			if (forceRefresh || this.participantsMsg == null || this.participantsMsg.length == 0) {
 				this.participantsMsg = [];
 				msgs.forEach((msg, index) => {
 					//@ts-ignore
@@ -182,18 +190,18 @@ export abstract class TournamentController {
 		return msgs;
 	}
 
-	public static RefrestTeamsListToDiscord(channel?: Discord.TextChannel): Discord.MessageEmbed[] {
+	public static RefrestTeamsListToDiscord(channel?: Discord.TextChannel, force?: boolean): Discord.MessageEmbed[] {
 		let currentMsgIndex = 0;
 		const messages: Discord.MessageEmbed[] = [];
 		messages[0] = new Discord.MessageEmbed();
-		messages[currentMsgIndex].setTitle(`Liste des équipes (${this._teams.length}) :`);
+		messages[currentMsgIndex].setTitle(`Liste des équipes (${this._teams.length} équipes) :`);
 
 		let isFirst = true;
 		let desc = '';
 
 		this._teams.forEach((team, index) => {
 			let toAdd = ``;
-			toAdd += `${!isFirst ? '\n': ''}${index} :`;
+			toAdd += `${!isFirst ? '\n': ''}${index + 1} :`;
 			let firstPlayer = true;
 			team.players.sort((a, b) => b.rank.seed - a.rank.seed).forEach((player) => {
 				toAdd += `${!firstPlayer ? ' | ' : ''}${player.discord} (${player.rank.emoji})`;
@@ -211,12 +219,12 @@ export abstract class TournamentController {
 
 		messages[currentMsgIndex].setDescription(desc);
 
-		if (channel) {
-			if (this.teamMsg) {
+		if (channel || force) {
+			if (!force && this.teamMsg) {
 				messages.forEach(async (msg, index) => {
 					if (this.teamMsg[index]) {
 						this.teamMsg[index].edit(msg);
-						this.FormatParticipantsToDiscord(channel, true);
+						this.FormatParticipantsToDiscord(channel, true, force);
 					} else {
 						if (this.participantsMsg) {
 							this.participantsMsg.forEach(async (msg) => {
@@ -224,22 +232,22 @@ export abstract class TournamentController {
 							});
 							this.participantsMsg.splice(0);
 						}
-						channel.send(msg).then((msg) => {
+						channel?.send(msg).then((msg) => {
 							this.teamMsg[index] = msg;
-							this.FormatParticipantsToDiscord(channel, true);
+							this.FormatParticipantsToDiscord(channel, true, force);
 						});
 					}
 				});
 			} else {
 				this.teamMsg = [];
 				messages.forEach((msg, index) => {
-						channel.send(msg).then((msg) => {
+						channel?.send(msg).then((msg) => {
 							this.teamMsg[index] = msg;
 						});
 				});
 
-				if (!this.participantsMsg)
-					this.FormatParticipantsToDiscord(channel, true);
+				if (force || !this.participantsMsg)
+					this.FormatParticipantsToDiscord(channel, true, force);
 			}
 		}
 
@@ -286,220 +294,360 @@ function SetDebugParticipants(from: Discord.GuildMember) {
 	}
 }
 
-RegisterCommand('participants', async (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	// TournamentController.FormatParticipantsToDiscord(message.channel as Discord.TextChannel);
-	TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
-}, true);
+new Command('participants', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	interaction.reply('Traitement en cours');
+	if (TournamentController.participants.length <= 0)
+		return interaction.reply('Personne n\'est inscrit pour le moment', {ephemeral: true});
+	TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel, (<boolean>args[0]?.value));
+	interaction.deleteReply();
+}, {
+	isAdmin: true,
+	description: 'Affiche la liste des participants'
+}, [
+	{
+		name: 'force',
+		description: 'Force l\'utilisation de ce channel pour la liste des participants',
+		type: 5
+	}
+]);
 
-RegisterCommand('open', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+new Command('open', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 	if (TournamentController.state != TournamentState.CLOSED)
-		return message.reply("Un tournoi est déjà en cours");
+		return interaction.reply('Un tournoi est déjà en cours', {ephemeral: true})
 
 	TournamentController.ResetTournament();
 
 	if (DEBUG_MODE)
-		SetDebugParticipants(from);
+		SetDebugParticipants(interaction.member);
 
-	if (TournamentController.OpenRegistrations())
-		message.reply("Ouverture des inscriptions pour le tournoi");
-}, true);
+	if (TournamentController.OpenRegistrations()) {
+		interaction.reply("Ouverture des inscriptions");
+	}
+}, {
+	isAdmin: true,
+	description: 'Ouvre les inscriptions pour un tournoi'
+});
 
-RegisterCommand('reopen', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+new Command('reopen', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 	if (TournamentController.state != TournamentState.WAITING)
-		return message.reply("Impossible, les matchs on déjà commencés");
+		return interaction.reply("Impossible, les matchs on déjà commencés", {ephemeral: true});
 
 	if (TournamentController.OpenRegistrations(true))
-		message.reply("Réouverture des inscriptions pour le tournoi");
-}, true);
+		interaction.reply("Réouverture des inscriptions pour le tournoi");
+}, {
+	isAdmin: true,
+	description: 'Réouvre les inscriptions au tournoi'
+});
 
-RegisterCommand('close', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+new Command('close', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 	if (TournamentController.state != TournamentState.REGISTERING)
-		return message.reply("Aucun tournoi en attente d'inscriptions");
+		return interaction.reply('Aucun tournoi en attente d\'inscriptions', {ephemeral: true});
 
 	if (TournamentController.CloseRegistrations())
-		message.reply("Fermeture des inscriptions pour le tournoi");
-}, true);
+		interaction.reply('Fermeture des inscriptions pour le tournoi');
+}, {
+	isAdmin: true,
+	description: 'Fermer les inscriptions au tournoi'
+});
 
-RegisterCommand('register', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	if (args.length === 0)
-		return message.reply('Veuillez préciser votre rank, example :\n**!register gold1**\n**!register gc1**');
-
-	const rank = Ranks.find(x => x.name === args[0].toLowerCase() || x.aliases.includes(args[0].toLowerCase()));
+new Command('register', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	const rank = Ranks.find(x => x.name === (<string>args[0].value!).toLowerCase() || x.aliases.includes((<string>args[0].value!).toLowerCase()));
 	if (!rank)
-		return message.reply('Votre rank ne correspond a aucun rank connu, veuillez rééssayer');
+		return interaction.reply('Votre rank ne correspond a aucun rank connu, veuillez rééssayer', {ephemeral: true});
 
-	const isRegistered = TournamentController.AddParticipant(from, rank);
+	const isRegistered = TournamentController.AddParticipant(interaction.member, rank);
 	if (isRegistered === true) {
-		from.createDM().then((chan) => {
-			chan.send("Vous avez été inscrit au tournoi").catch((reason) => {
-				TournamentController.RemoveParticipant(from);
+		interaction.defer(true);
+		interaction.member.createDM().then((chan: Discord.TextChannel) => {
+			interaction.editReply('Inscription en cours');
+			chan.send("Vous avez été inscrit au tournoi").then(() => {
+				interaction.editReply('Inscription validée');
+			}).catch((reason) => {
+				interaction.editReply('Je ne peut pas vous envoyer de message privé, vérifiez vos paramètres de confidentialité et réessayez');
+				TournamentController.RemoveParticipant(interaction.member);
 			});
 		});
 	} else {
-		message.reply('Erreur: ' + isRegistered);
+		interaction.reply('Erreur: ' + isRegistered);
 	}
-});
-
-RegisterCommand('quit', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	if (TournamentController.RemoveParticipant(from))
-		message.reply("Vous vous êtes désinscrit du tournoi");
-	else
-		message.reply("Une erreur est survenue, réessayez et vérifiez que vous êtes bien inscrit a un tournoi");
-});
-
-RegisterCommand('kick', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	if (args.length != 1)
-		return message.reply("Veuillez précisé le N° du joueur a kick");
-
-	const index = Number(args[0])
-	if (index == NaN)
-		return message.reply("Ce paramètre n'est pas un chiffre");
-
-	const participant = TournamentController.participants[index];
-	if (!participant)
-		return;
-
-	if (TournamentController.RemoveParticipant((participant.discord as Discord.GuildMember), true))
-		message.reply(`${participant.discord} a été kick du tournoi`);
-	else
-		message.reply("Une erreur est survenue");
-}, true);
-
-RegisterCommand('team');
-RegisterSubCommand('team', 'create', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	const members = args.map(x => Number(x));
-
-	message.delete();
-
-	if (TournamentController.state != TournamentState.WAITING)
-		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
-
-	const newTeam = TournamentController.AddTeam(members);
-	if (!newTeam)
-		return message.reply('Une erreur est survenue');
-
-	TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
-}, true);
-
-RegisterSubCommand('team', 'delete', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-
-	message.delete();
-
-	if (TournamentController.state != TournamentState.WAITING)
-		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
-
-	const teamIdx = Number(args[0]);
-	
-	if (teamIdx == NaN)
-		return message.reply('Veuillez préciser l\'index de l\'équipe');
-
-	TournamentController.DeleteTeam(teamIdx);
-
-	TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
-}, true);
-
-RegisterSubCommand('team', 'clear', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-
-	message.delete();
-
-	if (TournamentController.state != TournamentState.WAITING)
-		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
-
-	TournamentController.teams.forEach((team, index) => {
-		TournamentController.DeleteTeam(index);
-	})
-
-	TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
-}, true);
-
-
-RegisterSubCommand("team", "roll", (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	if (TournamentController.state != TournamentState.WAITING)
-		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
-	else {
-
-		const maxTeamSize = Number(args[0]);
-		const rankingModifier = Number(args[1]);
-
-		if (maxTeamSize == NaN)
-			return message.reply("Veuillez preciser la taille maximum des equipes");
-
-		if (maxTeamSize > 4)
-			return message.reply("La taille des equipes ne peut pas depasser 4 joueurs");
-			
-		// reset teams
-
-		TournamentController.teams.forEach((team, index) => {
-			TournamentController.DeleteTeam(index);
-		})
-
-		// generate teams
-		const teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier || 60);
-		
-		for (const team of teams) {
-			const playersIndex: number[] = [];
-			for (const player of team) {
-				const a = TournamentController.participants.findIndex(p => {
-					return p.discord?.id === player.discord?.id
-				})
-				if (a !== -1) playersIndex.push(a);
+}, {
+	isAdmin: false,
+	description: 'S\'inscrire au tournoi en cours'
+}, [
+	{
+		name: 'max_rank',
+		description: 'Le rang maximum que vous ayez atteint (exemple: champion1, ssl, gc3 ...)',
+		type: 3,
+		required: true,
+		choices: Ranks.map(x => {
+			return {
+				name: x.label,
+				value: x.name
 			}
-			const newTeam = TournamentController.AddTeam(playersIndex);
+		})
+	}
+]);
+
+new Command('quit', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	if (TournamentController.RemoveParticipant(interaction.member))
+		interaction.reply('Vous vous êtes désinscrit du tournoi', {ephemeral: true});
+	else
+		interaction.reply('Une erreur est survenue, réessayez et vérifiez que vous êtes bien inscrit a un tournoi');
+}, {
+	isAdmin: false,
+	description: 'Se désinscrire du tournoi en cours'
+});
+
+new Command('kick', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	if (TournamentController.RemoveParticipant(args[0].member, true))
+		interaction.reply(`${args[0].member} à été kick du tournoi`);
+	else
+		interaction.reply('Une erreur est survenue', {ephemeral: true});
+}, {
+	isAdmin: true,
+	description: 'Expulser un joueur du tournoi'
+}, [
+	{
+		name: 'player',
+		description: 'Le joueur a expulser',
+		type: 6,
+		required: true
+	}
+]);
+
+new Command('team', async (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+
+	interaction.defer(true);
+	interaction.editReply('Traitement en cours');
+
+	if (TournamentController.state != TournamentState.WAITING)
+		return interaction.editReply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
+
+	switch (args[0].name) {
+		case 'create':
+			const players = (<string>args[0].options![0].value).split(' ').map(x => Number(x) - 1);
+
+			if (!players.every(x => x != NaN))
+				return interaction.editReply('Erreur: Vérifiez le N° des joueurs');
+
+			const newTeam = TournamentController.AddTeam(players);
+			if (!newTeam)
+				return interaction.editReply('Une erreur est survenue');
+
+			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+			interaction.editReply('Équipe ajoutée');
+			break;
+
+		case 'delete':
+			const teamId = (<number>args[0].options![0].value) - 1;
+			TournamentController.DeleteTeam(teamId);
+
+			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+			interaction.editReply('Équipe supprimée');
+			break;
+
+		case 'clear':
+			TournamentController.ClearTeams();
+			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+			interaction.editReply('Toutes les équipes on été supprimées');
+			break;
+
+		case 'roll':
+			const maxTeamSize = Number(args[0].options![0].value);
+			const rankingModifier = Number(args[0].options![1]?.value);
+
+			// reset teams
+			TournamentController.ClearTeams();
+
+			// generate teams
+			const teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier || 60);
+			for (const team of teams) {
+				const playersIndex: number[] = [];
+				for (const player of team) {
+					const a = TournamentController.participants.findIndex(p => {
+						return p.discord?.id === player.discord?.id
+					})
+					if (a !== -1) playersIndex.push(a);
+				}
+				const newTeam = TournamentController.AddTeam(playersIndex);
+						
+				if (!newTeam) return interaction.editReply('Une erreur est survenue');
+			}
+			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+			interaction.editReply('Équipes générées');
+			break;
+	}
+}, {
+	isAdmin: true,
+	description: 'Gestion des équipes'
+}, [
+	{
+		name: 'create',
+		description: 'Créer une équipe',
+		type: 1,
+		options: [
+			{
+				name: 'Joueurs',
+				description: 'Le numéro de chaque joueur à ajouté dans l\'équipe',
+				type: 3,
+				required: true
+			}
+		]
+	}, {
+		name: 'delete',
+		description: 'Supprimer une équipe',
+		type: 1,
+		options: [
+			{
+				name: 'team_number',
+				description: 'Le numéro de l\'équipe à supprimée',
+				type: 4,
+				required: true
+			}
+		]
+	}, {
+		name: 'clear',
+		description: 'Vide la liste des équipes',
+		type: 1
+	}, {
+		name: 'roll',
+		description: 'Génère les équipes',
+		type: 1,
+		options: [
+			{
+				name: 'max_team_size',
+				description: 'La taille maximum d\'une équipe',
+				type: 4,
+				required: true,
+				choices: [
+					{
+						name: '2',
+						value: 2
+					}, {
+						name: '3',
+						value: 3
+					}, {
+						name: '4',
+						value: 4
+					}
+				]
+			}, {
+				name: 'ranking_modifier',
+				description: 'La valeur de base pour calculer l\'équilibrage',
+				type: 4
+			}
+		]
+	}
+]);
+
+
+// RegisterSubCommand("team", "roll", (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+// 	if (TournamentController.state != TournamentState.WAITING)
+// 		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
+// 	else {
+
+// 		const maxTeamSize = Number(args[0]);
+// 		const rankingModifier = Number(args[1]);
+
+// 		if (maxTeamSize == NaN)
+// 			return message.reply("Veuillez preciser la taille maximum des equipes");
+
+// 		if (maxTeamSize > 4)
+// 			return message.reply("La taille des equipes ne peut pas depasser 4 joueurs");
 			
-			if (!newTeam) return message.reply('Une erreur est survenue');
-		}
+// 		// reset teams
 
-		TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
-	}
-}, true);
+// 		TournamentController.teams.forEach((team, index) => {
+// 			TournamentController.DeleteTeam(index);
+// 		})
 
-RegisterCommand('start', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
+// 		// generate teams
+// 		const teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier || 60);
+		
+// 		for (const team of teams) {
+// 			const playersIndex: number[] = [];
+// 			for (const player of team) {
+// 				const a = TournamentController.participants.findIndex(p => {
+// 					return p.discord?.id === player.discord?.id
+// 				})
+// 				if (a !== -1) playersIndex.push(a);
+// 			}
+// 			const newTeam = TournamentController.AddTeam(playersIndex);
+			
+// 			if (!newTeam) return message.reply('Une erreur est survenue');
+// 		}
+
+// 		TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
+// 	}
+// }, true);
+
+new Command('start', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 	BracketController.Initialize();
-}, true);
 
+	interaction.reply('Démarage du tournoi', {ephemeral: true});
+}, {
+	isAdmin: true,
+	description: 'Commence les matchs d\'un tournoi'
+});
 
-RegisterCommand('maketeams', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	if (DEBUG_MODE) {
-		const _temp_teams = [...TournamentController.participants];
-		const _temp_teams2 = [...TournamentController.participants];
-		for (let i = 0; i < Math.floor(_temp_teams.length / 2); i++) {
-			TournamentController.AddTeam([i, _temp_teams2.length - 1]);
-			_temp_teams2.splice(i, 1);
-			_temp_teams2.splice(_temp_teams.length - 1, 1);
-		}
-		TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
-	}
-}, true);
-
-RegisterCommand('setrank', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	const ply = Number(args[0]);
-	if (ply == NaN)
-		return;
-
-	const rank = Ranks.find(x => x.name === args[1].toLowerCase() || x.aliases.includes(args[1].toLowerCase()));
+new Command('setrank', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	const rank = Ranks.find(x => x.name === (<string>args[1].value!).toLowerCase() || x.aliases.includes((<string>args[1].value!).toLowerCase()));
 	if (!rank)
-		return message.reply('Rank introuvable');
+		return interaction.reply('Rang introuvable', {ephemeral: true});
 
-	const participant = TournamentController.participants[ply];
+	const participant = TournamentController.participants.find(x => x.discord == args[0].member);
 	if (!participant)
-		return;
+		return interaction.reply('Ce joueur n\'est pas dans le tournoi', {ephemeral: true});
 
 	participant.setRank(rank);
-}, true);
+	interaction.reply('Rang du joueur modifié', {ephemeral: true});
 
-RegisterCommand('addplayer', (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-	const ply = message.mentions.members?.first();
+}, {
+	isAdmin: true,
+	description: 'Changer le rank d\'un joueur'
+}, [
+	{
+		name: 'player',
+		description: 'Le joueur en question',
+		type: 6,
+		required: true
+	}, {
+		name: 'rank',
+		description: 'Le nouveau rang du joueur',
+		type: 3,
+		required: true,
+		choices: Ranks.map(x => {
+			return {
+				name: x.label,
+				value: x.name
+			}
+		})
+	}
+]);
 
-	if (ply == null)
-		return;
-
-	const rank = Ranks.find(x => x.name === args[1].toLowerCase() || x.aliases.includes(args[1].toLowerCase()));
+new Command('addplayer', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	const rank = Ranks.find(x => x.name === (<string>args[1].value!).toLowerCase() || x.aliases.includes((<string>args[1].value!).toLowerCase()));
 	if (!rank)
-		return message.reply('Rank introuvable');
+		return interaction.reply('Rang introuvable', {ephemeral: true});
 
-	const added = TournamentController.AddParticipant(ply, rank);
+	const added = TournamentController.AddParticipant(args[0].member, rank, true);
 	if (typeof added == 'string')
-		return message.reply(added);
+		return interaction.reply(added);
 
-	message.reply('Joueur ajouté');
-}, true);
+	interaction.reply('Joueur ajouté', {ephemeral: true});
+}, {
+	isAdmin: true,
+	description: 'Ajouter manuellement un joueur au tournoi'
+}, [
+	{
+		name: 'player',
+		description: 'Le joueur à ajouté',
+		type: 6,
+		required: true
+	}, {
+		name: 'rank',
+		description: 'Le rang du joueur',
+		type: 3,
+		required: true
+	}
+]);

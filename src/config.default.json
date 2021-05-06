@@ -5,6 +5,7 @@
 	"MatchListChannel": "Id of channel where matches list will be sent",
 	"Admin": {
 		"MatchesLogsChannel": "Id of channel where matches logs will be sent",
-		"RegisterLogsChannel": "Id of channel where participants will be logs when registering"
+		"RegisterLogsChannel": "Id of channel where participants will be logs when registering",
+		"AdminCommandsRoleId": "Id of role who will have permission on bot"
 	}
 }

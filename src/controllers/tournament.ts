@@ -38,6 +38,8 @@ export abstract class TournamentController {
 	private static participantsMsg: Discord.Message[];
 	private static teamMsg: Discord.Message[];
 
+	public static memberSince: number = 10800000;
+
 	public static AddTeam(membersIndexes: number[]): Team | undefined {
 		if (membersIndexes.length === 0 ) {
 			return;
@@ -351,6 +353,17 @@ new Command('close', (interaction: Discord.CommandInteraction, args: Discord.Com
 });
 
 new Command('register', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+
+	const accountAge = Date.now() - interaction.user.createdTimestamp;
+	if (accountAge < 259200000) {
+		return interaction.reply(`Votre compte Discord est trop réçent pour participer au tournoi (Date de création: ${interaction.user.createdAt.toLocaleDateString('fr-FR')} ${interaction.user.createdAt.toLocaleTimeString('fr-FR')})`);
+	}
+
+	const memberSince = Date.now() - interaction.member.joinedTimestamp;
+	if (memberSince < TournamentController.memberSince) {
+		return interaction.reply(`Vous avez rejoint le serveur Discord depuis moins de 3h, vous ne pouvez pas encore vous inscrire au tournoi`);
+	}
+
 	const rank = Ranks.find(x => x.name === (<string>args[0].value!).toLowerCase() || x.aliases.includes((<string>args[0].value!).toLowerCase()));
 	if (!rank)
 		return interaction.reply('Votre rank ne correspond a aucun rank connu, veuillez rééssayer', {ephemeral: true});
@@ -655,5 +668,30 @@ new Command('addplayer', (interaction: Discord.CommandInteraction, args: Discord
 			}
 		}),
 		required: true
+	}
+]);
+
+new Command('wait_duration', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+
+	if (args.length == 0) {
+		const amountOfHours = TournamentController.memberSince / 3600000;
+		interaction.reply(`Le temps d'attente avant de pouvoir rejoindre un tournoi est définit sur ${amountOfHours} heure${amountOfHours > 1 ? 's' : ''}`);
+		return;
+	}
+
+	const hours = <number>args[0].value;
+	if (!hours || Number(hours) == NaN)
+		return interaction.reply('Durée invalide', {ephemeral: true});
+
+	TournamentController.memberSince = hours * (3600000);
+	interaction.reply(`Le temps d'attente avant de pouvoir rejoindre un tournoi a été définit sur ${TournamentController.memberSince / 3600000} heure${hours > 1 ? 's' : ''}`, {ephemeral: true});
+}, {
+	isAdmin: true,
+	description: 'Change le temps avant de pouvoir faire un tournoi quand un joueur viens de rejoindre le Discord'
+}, [
+	{
+		name: 'hours',
+		description: 'Le nombre d\'heures',
+		type: 4
 	}
 ]);

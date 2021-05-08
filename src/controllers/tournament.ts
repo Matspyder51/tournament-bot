@@ -680,7 +680,7 @@ new Command('wait_duration', (interaction: Discord.CommandInteraction, args: Dis
 	}
 
 	const hours = <number>args[0].value;
-	if (!hours || Number(hours) == NaN)
+	if (hours == null || Number(hours) == NaN)
 		return interaction.reply('Durée invalide', {ephemeral: true});
 
 	TournamentController.memberSince = hours * (3600000);

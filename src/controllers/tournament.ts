@@ -648,6 +648,12 @@ new Command('addplayer', (interaction: Discord.CommandInteraction, args: Discord
 		name: 'rank',
 		description: 'Le rang du joueur',
 		type: 3,
+		choices: Ranks.map(x => {
+			return {
+				name: x.label,
+				value: x.name
+			}
+		}),
 		required: true
 	}
 ]);

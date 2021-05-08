@@ -487,7 +487,7 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 		type: 1,
 		options: [
 			{
-				name: 'Joueurs',
+				name: 'players',
 				description: 'Le numéro de chaque joueur à ajouté dans l\'équipe',
 				type: 3,
 				required: true
@@ -499,7 +499,7 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 		type: 1,
 		options: [
 			{
-				name: 'team_number',
+				name: 'team_index',
 				description: 'Le numéro de l\'équipe à supprimée',
 				type: 4,
 				required: true

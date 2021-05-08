@@ -19,9 +19,11 @@ export async function LoadAllCommands() {
 						type: 1,
 						permission: true
 					}
-				])
+				]);
 			}
 		});
+	}).catch((err) => {
+		console.error(err);
 	});
 
 	toAdd = [];
@@ -78,11 +80,12 @@ export class Command {
 	}
 
 	public toDiscordFormat(): Discord.ApplicationCommandData {
-		return {
+		const data =  {
 			name: this._name,
 			description: this._settings!.description || 'Pas de description',
 			options: this._args
 		}
+		return data;
 	}
 
 }

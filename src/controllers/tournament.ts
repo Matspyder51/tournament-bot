@@ -85,6 +85,8 @@ export abstract class TournamentController {
 			team.players.forEach(x => x.removeFromTeam());
 		});
 
+		this.participants.forEach(x => x.removeFromTeam());
+
 		this._teams = [];
 	}
 

@@ -128,7 +128,9 @@ export abstract class TournamentController {
 		if (!this.IsPlayerInTournament(discord))
 			return false;
 
-		this._participants.splice(this._participants.findIndex(x => x.discord == discord), 1);
+		const removed = this._participants.splice(this._participants.findIndex(x => x.discord == discord), 1);
+		if (!removed)
+			return false;
 
 		const team = this.teams.findIndex(x => x.players.find(y => y.discord == discord));
 		if (team != null) {

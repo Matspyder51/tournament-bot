@@ -134,6 +134,12 @@ const ranks: Rank[] = [
 		aliases: ["supersoniclegend", "legendesupersonique"],
 		seed: 1950,
 	},
+	{
+		name: "pro",
+		label: "Joueur Professionel / Top 100",
+		aliases: ["rlcs", "top100"],
+		seed: 2150
+	}
 ];
 
 export const Ranks = [...ranks];

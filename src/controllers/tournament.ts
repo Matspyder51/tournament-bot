@@ -45,19 +45,25 @@ export abstract class TournamentController {
 			return;
 		}
 
+		for (const member of membersIndexes) {
+			let isOk = true;
+			if (member == NaN)
+				isOk = false;
+
+			const part = this.participants[member];
+			if (!part || part.inTeam)
+				isOk = false;
+
+			if (!isOk) {
+				console.error(`Error on member N°${member}`);
+				return;
+			}
+		}
+
 		const teamMembers: Participant[] = [];
 		
 		for (const member of membersIndexes) {
-			if (member === NaN)
-				return;
-
 			const part = this.participants[member];
-			if (!part)
-				return;
-
-			if (part.inTeam)
-				return;
-
 			part.addToTeam();
 			teamMembers.push(part);
 		}
@@ -486,7 +492,9 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 				}
 				const newTeam = TournamentController.AddTeam(playersIndex);
 						
-				if (!newTeam) return interaction.editReply('Une erreur est survenue');
+				if (!newTeam) {
+					return interaction.editReply(`Impossible de créer une des équipes (${playersIndex.join(', ')})`);
+				}
 			}
 			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
 			interaction.editReply('Équipes générées');

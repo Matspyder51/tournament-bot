@@ -497,9 +497,12 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 					const newTeam = TournamentController.AddTeam(playersIndex);
 							
 					if (!newTeam) {
+						TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
 						return interaction.editReply(`Impossible de créer une des équipes (${playersIndex.join(', ')})`);
 					}
 				}
+				TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+				return interaction.editReply('Equipes générées');
 			}
 			else {
 				return interaction.editReply(`Une erreur est survenue lors de la creation des equipes`);

@@ -21,7 +21,7 @@ interface TeamsMetrics {
     median: number
 }
 
-export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3,  modifier: number = 60): Team[] {
+export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3,  modifier: number = 60): Team[] | null{
     players = computePlayersMmr(players, ranks, modifier);
     
     const tabs = [];
@@ -30,15 +30,34 @@ export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3, 
         tabs.push(generateTeams(players, [], ranks, maxTeamSize, modifier));
     }
 
-    let best = tabs[1];
+    let best: Team[] | null = null;
     tabs.forEach(tab => {
-        const m = teamsMetrics(tab);
-        const mB = teamsMetrics(best);
-        if (m.highestTeam - m.lowestTeam < mB.highestTeam - mB.lowestTeam) {
-            best = tab;
+        if (teamsHealthCheck(tab, players)) {
+            if (best === null) {
+                best = tab;
+            }
+            else {
+                const m = teamsMetrics(tab);
+                const mB = teamsMetrics(best);
+                if (m.highestTeam - m.lowestTeam < mB.highestTeam - mB.lowestTeam) {
+                    best = tab;
+                }
+            }
         }
     })
     return best;
+}
+
+function teamsHealthCheck(teams: Team[], players: Player[]): boolean {
+    const playersInTeam = new Set<string>();
+    teams.forEach(team => {
+         team.forEach(player => {
+            if (playersInTeam.has(player.discord?.user.id as string)) return false;
+            playersInTeam.add(player.discord?.user.id as string);
+         })
+    })
+    if (playersInTeam.size !== players.length) return false;
+    return true;
 }
 
 function generateTeams(players: Player[], teams: Team[], ranks: Rank[], maxTeamSize: number, modifier: number): Team[] {

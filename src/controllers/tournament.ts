@@ -484,22 +484,26 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 
 			// generate teams
 			const teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier || 60);
-			for (const team of teams) {
-				const playersIndex: number[] = [];
-				for (const player of team) {
-					const a = TournamentController.participants.findIndex(p => {
-						return p.discord?.id === player.discord?.id
-					})
-					if (a !== -1) playersIndex.push(a);
-				}
-				const newTeam = TournamentController.AddTeam(playersIndex);
-						
-				if (!newTeam) {
-					return interaction.editReply(`Impossible de créer une des équipes (${playersIndex.join(', ')})`);
+			if (teams !== null) {
+				(<Discord.TextChannel>Bot.guild.channels.resolve("840702261008400406")).send(JSON.stringify(teams));
+				for (const team of teams) {
+					const playersIndex: number[] = [];
+					for (const player of team) {
+						const a = TournamentController.participants.findIndex(p => {
+							return p.discord?.id === player.discord?.id
+						})
+						if (a !== -1) playersIndex.push(a);
+					}
+					const newTeam = TournamentController.AddTeam(playersIndex);
+							
+					if (!newTeam) {
+						return interaction.editReply(`Impossible de créer une des équipes (${playersIndex.join(', ')})`);
+					}
 				}
 			}
-			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
-			interaction.editReply('Équipes générées');
+			else {
+				return interaction.editReply(`Une erreur est survenue lors de la creation des equipes`);
+			}
 			break;
 	}
 }, {

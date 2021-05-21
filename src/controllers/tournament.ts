@@ -7,6 +7,7 @@ import { Team } from '../models/team';
 import { BracketController } from './bracket';
 import { GetRandomNumber } from '../utils';
 import * as Config from '../config.json';
+import { GenerateTeams } from '../services/generateTeamsNext';
 import { main } from '../services/generateTeams';
 
 
@@ -477,15 +478,24 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 
 		case 'roll':
 			const maxTeamSize = Number(args[0].options![0].value);
-			const rankingModifier = Number(args[0].options![1]?.value);
+			const version = String(args[0].options![1]?.value) || "next_gen";
+			const rankingModifier = Number(args[0].options![2]?.value);
 
 			// reset teams
 			TournamentController.ClearTeams();
 
 			// generate teams
-			const teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier || 60);
-			if (teams !== null) {
-				(<Discord.TextChannel>Bot.guild.channels.resolve("840702261008400406")).send(JSON.stringify(teams));
+			let teams;
+			if (version === "legacy" ) {
+				teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
+			}
+			else if (version === "next_gen") {
+				teams = new GenerateTeams(TournamentController.participants, Ranks, maxTeamSize, rankingModifier).getTab().teams;
+			}
+			else break;
+
+			if (!!teams) {
+				(<Discord.TextChannel>Bot.guild.channels.resolve("840702261008400406")).send(JSON.stringify(teams, null, 2));
 				for (const team of teams) {
 					const playersIndex: number[] = [];
 					for (const player of team) {
@@ -562,6 +572,19 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 						name: '4',
 						value: 4
 					}
+				]
+			}, {
+				name: 'teams_generation_version',
+				description: 'L\'algorythme de generation a utiliser',
+				type: 3,
+				choices: [
+					{
+						name: 'legacy',
+						value: 'legacy'
+					}, {
+						name: 'next_gen',
+						value: 'next_gen'
+					},
 				]
 			}, {
 				name: 'ranking_modifier',

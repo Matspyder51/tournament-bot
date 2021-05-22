@@ -81,7 +81,6 @@ export class GenerateTeams {
         const highestRank = this.findHighestRank(players);
         
         if (!highestRank){
-            // console.error(JSON.stringify(players, null, 2));
              throw Error("Can't find the highest ranked player.");
         }
         
@@ -89,7 +88,6 @@ export class GenerateTeams {
 
         if (highestRank !== null) {
             players.filter(player => player.rank.name === highestRank).map(player => {
-                console.log("Hello")
                 teams.push([player]);
                 return player;
             });
@@ -272,11 +270,7 @@ export class GenerateTeams {
 
     private computeRankMmr(rank: string): number {
         const seed =  this.ranks.find(r => r.name === rank);
-        console.log(rank, seed?.name, seed?.seed, this.modifier);
-        if (!!seed) {
-            console.log(Math.floor(Math.pow(seed.seed, 1 + (this.modifier / 100))));
-            return Math.floor(Math.pow(seed.seed, 1 + (this.modifier / 100)))
-        }
+        if (!!seed) return Math.floor(Math.pow(seed.seed, 1 + (this.modifier / 100)))
         else throw new Error("Can't find rank");
     }
 

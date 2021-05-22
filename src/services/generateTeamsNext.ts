@@ -30,22 +30,13 @@ export class GenerateTeams {
     constructor(players: Participant[], ranks: Rank[], maxTeamSize: number = 3, modifier: number = 150) {
         this.ranks = ranks;
 
-        if (maxTeamSize <= 0) {
-            throw Error("Max team size must  be greater than 0");
-        }
-        else if (maxTeamSize > 4) {
-            throw Error("Max team size must be less than 4");
-        }
-        else {
-            this.maxTeamSize = maxTeamSize;
-        }
+        if (maxTeamSize <= 0) throw Error("Max team size must  be greater than 0");
+        else if (maxTeamSize > 4) throw Error("Max team size must be less than 4");
+        else this.maxTeamSize = maxTeamSize;
 
-        if (modifier < 0) {
-            throw Error("Ranks modifier must be greater or equal to 0");
-        }
-        else {
-            this.modifier = modifier;
-        }
+        if (typeof modifier !== "number") throw Error("Ranks modifier must be a number");
+        if (modifier < 0) throw Error("Ranks modifier must be greater or equal to 0");
+        else this.modifier = modifier;
 
         try {
             this.players = this.computePlayersMmr(players);
@@ -56,17 +47,17 @@ export class GenerateTeams {
     }
 
     public getTeams(): {teams: Team[], tolerance: number} {
-        const tab = this.generateTeams(this.players);
         try {
+            const tab = this.generateTeams(this.players);
             this.teamsHealthCheck(tab.teams, this.players);
             return tab;
         }
         catch (error) {
-            throw Error("Team generation encountered the following error : " + error);
+            throw Error("Team generation encountered the following  : " + error);
         }
     }
 
-    public getTab(): {teams: Team[], tolerance: number} {
+    public getTab(): {teams: Team[], tolerance: number} | null{
         const tabs = [];
         const limit = this.players.length * 10;
         let fail = 0;
@@ -79,6 +70,7 @@ export class GenerateTeams {
             catch (error) {
                 console.error(error);
                 console.log(`${fail} tabs failed`);
+                return null;
             }
         }
         tabs.sort((a, b) => a.tolerance - b.tolerance);
@@ -87,10 +79,17 @@ export class GenerateTeams {
 
     private generateTeams(players: Player[]): {teams: Team[], tolerance: number, metrics: TeamsMetrics} {
         const highestRank = this.findHighestRank(players);
+        
+        if (!highestRank){
+            // console.error(JSON.stringify(players, null, 2));
+             throw Error("Can't find the highest ranked player.");
+        }
+        
         const teams: Team[] = [];
-    
+
         if (highestRank !== null) {
             players.filter(player => player.rank.name === highestRank).map(player => {
+                console.log("Hello")
                 teams.push([player]);
                 return player;
             });
@@ -101,16 +100,23 @@ export class GenerateTeams {
         let tolerance: number = 0;
         let tempTeams: Team[] = [...teams];
     
-        while(unassignedPlayers.length > 0 && tolerance < 100) {
-            const metrics = this.teamsMetrics(tempTeams);
-            const team = this.generateTeam([...unassignedPlayers], metrics, tolerance);
-            if (team && team.length > 0) {
-                const teamMetric = this.teamMetrics(team);
-                if (teamMetric.teamCombineMmr * 100 / metrics.median < (100 + tolerance) &&
-                    teamMetric.teamCombineMmr * 100 / metrics.median > (100 - tolerance)) 
-                {
-                    tempTeams.push(team);
-                    unassignedPlayers = unassignedPlayers.filter(player => team.find(p => p.discord?.user.id === player.discord?.user.id) === undefined);
+        while(unassignedPlayers.length > 0 && tolerance < 100 && tempTeams.length > 0) {
+            try {
+                const metrics = this.teamsMetrics(tempTeams);
+                const team = this.generateTeam([...unassignedPlayers], metrics, tolerance);
+                if (team && team.length > 0) {
+                    const teamMetric = this.teamMetrics(team);
+                    if (teamMetric.teamCombineMmr * 100 / metrics.median < (100 + tolerance) &&
+                        teamMetric.teamCombineMmr * 100 / metrics.median > (100 - tolerance)) 
+                    {
+                        tempTeams.push(team);
+                        unassignedPlayers = unassignedPlayers.filter(player => team.find(p => p.discord?.user.id === player.discord?.user.id) === undefined);
+                    }
+                    else {
+                        tolerance ++;
+                        unassignedPlayers = [...players];
+                        tempTeams = [...teams];
+                    }
                 }
                 else {
                     tolerance ++;
@@ -118,14 +124,12 @@ export class GenerateTeams {
                     tempTeams = [...teams];
                 }
             }
-            else {
-                tolerance ++;
-                unassignedPlayers = [...players];
-                tempTeams = [...teams];
+            catch (error) {
+                throw error
             }
         }
         return {
-            teams: tempTeams,
+            teams: [...tempTeams],
             tolerance,
             metrics: this.teamsMetrics(teams)
         }
@@ -188,29 +192,35 @@ export class GenerateTeams {
     }
 
     private teamsMetrics(teams: Team[]): TeamsMetrics {
-        let highestTeam: number = this.teamMetrics(teams[0]).teamCombineMmr;
-        let lowestTeam: number = this.teamMetrics(teams[0]).teamCombineMmr;
-        const teamsMmr: number[] = [];
-    
-        teams.forEach(team => {
-            const metrics = this.teamMetrics(team);
-            teamsMmr.push(metrics.teamCombineMmr);
-            if (!highestTeam || metrics.teamCombineMmr > highestTeam) highestTeam = metrics.teamCombineMmr;
-            if (!lowestTeam || metrics.teamCombineMmr < lowestTeam) lowestTeam = metrics.teamCombineMmr;
-        });
-    
-        return {
-            highestTeam,
-            lowestTeam,
-            average : this.getAverage(teamsMmr),
-            median : this.getMedian(teamsMmr)
-        };
+        if (teams.length > 0) {
+            let highestTeam: number = this.teamMetrics(teams[0]).teamCombineMmr;
+            let lowestTeam: number = this.teamMetrics(teams[0]).teamCombineMmr;
+            const teamsMmr: number[] = [];
+        
+            teams.forEach(team => {
+                const metrics = this.teamMetrics(team);
+                teamsMmr.push(metrics.teamCombineMmr);
+                if (!highestTeam || metrics.teamCombineMmr > highestTeam) highestTeam = metrics.teamCombineMmr;
+                if (!lowestTeam || metrics.teamCombineMmr < lowestTeam) lowestTeam = metrics.teamCombineMmr;
+            });
+        
+            return {
+                highestTeam,
+                lowestTeam,
+                average : this.getAverage(teamsMmr),
+                median : this.getMedian(teamsMmr)
+            };
+        }
+        else {
+            console.error(teams);
+            throw Error("Internal error")
+        }
     }
     
     private teamMetrics(team: Team): TeamMetrics {
         let teamCombineMmr: number = 0;
         team.forEach(player => {
-            teamCombineMmr += player.mmr; // player is undefined ????
+            teamCombineMmr += player?.mmr;
         });
     
         return {
@@ -224,14 +234,23 @@ export class GenerateTeams {
             rank : "",
             mmr : 0
         };
-        players.forEach(player => {
-            if (player.mmr > highest.mmr) {
-                highest = {
-                    rank : player.rank.name, 
-                    mmr : player.mmr,
-                };
+        if (players.length === 1) {
+            highest = {
+                rank : players[0].rank.name, 
+                mmr : players[0].mmr,
             };
-        });
+        }
+
+        else {
+            players.forEach(player => {
+                if (player.mmr > highest.mmr) {
+                    highest = {
+                        rank : player.rank.name, 
+                        mmr : player.mmr,
+                    };
+                }
+            });
+        }
 
         // Could cause problems but we need some kind a breakdown below GC1    
         // if (highest.mmr < this.computeRankMmr("gc1")) return null;
@@ -243,7 +262,6 @@ export class GenerateTeams {
         return players.map<Player>((player: Participant) => {
             try {
                 (player as Player).mmr = this.computeRankMmr(player.rank.name);
-
             }
             catch {
                 throw Error(`Unable to compute player ${player.discord?.nickname} MMR with rank ${player.rank.name}`);
@@ -254,7 +272,11 @@ export class GenerateTeams {
 
     private computeRankMmr(rank: string): number {
         const seed =  this.ranks.find(r => r.name === rank);
-        if (!!seed) return Math.floor(Math.pow(seed.seed, 1 + (this.modifier / 100)));
+        console.log(rank, seed?.name, seed?.seed, this.modifier);
+        if (!!seed) {
+            console.log(Math.floor(Math.pow(seed.seed, 1 + (this.modifier / 100))));
+            return Math.floor(Math.pow(seed.seed, 1 + (this.modifier / 100)))
+        }
         else throw new Error("Can't find rank");
     }
 

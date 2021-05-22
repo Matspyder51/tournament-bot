@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "tsc -p ./src/ -w",
     "build": "tsc -p ./src/",
-    "start": "node ./dist/main.js"
+    "start": "node ./dist/main.js",
+    "test": "tsc -p ./src/services/testGenerateTeams.ts",
+    "---Docker---": "",
+    "docker up": "docker-compose -f ./Docker/docker-compose.yml -p bot-tournoi up --build",
+    "docker down": "docker-compose -f ./Docker/docker-compose.yml -p bot-tournoi down"
   },
   "dependencies": {
     "discord.js": "discordjs/discord.js#master",

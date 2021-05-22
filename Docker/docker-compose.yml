@@ -1,0 +1,31 @@
+version: "2"
+services:
+  app:
+    container_name: bot-tournoi
+    build:
+      context: ../
+      dockerfile: ./Docker/Dockerfile
+    networks: 
+      - app
+
+  db:
+    image: postgres:alpine
+    ports:
+      - 5432:5432
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=main
+    networks:
+      - app
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+
+networks: 
+  app:

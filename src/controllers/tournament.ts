@@ -477,9 +477,9 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 			break;
 
 		case 'roll':
-			const maxTeamSize = Number(args[0].options![0].value);
-			const version = String(args[0].options![1]?.value) || "next_gen";
-			const rankingModifier = Number(args[0].options![2]?.value);
+			const maxTeamSize = args[0].options![0] ? Number(args[0].options![0].value) : undefined;
+			const version = args[0].options![1] ? String(args[0].options![1]?.value) : "nextgen";
+			const rankingModifier = args[0].options![2] ? Number(args[0].options![2]?.value) : undefined;
 
 			// reset teams
 			TournamentController.ClearTeams();
@@ -489,8 +489,9 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 			if (version === "legacy" ) {
 				teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
 			}
-			else if (version === "next_gen") {
-				teams = new GenerateTeams(TournamentController.participants, Ranks, maxTeamSize, rankingModifier).getTab().teams;
+			else if (version === "nextgen") {
+				teams = new GenerateTeams(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
+				teams = teams.getTab()?.teams;
 			}
 			else break;
 
@@ -517,7 +518,6 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 			else {
 				return interaction.editReply(`Une erreur est survenue lors de la creation des equipes`);
 			}
-			break;
 	}
 }, {
 	isAdmin: true,
@@ -582,8 +582,8 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 						name: 'legacy',
 						value: 'legacy'
 					}, {
-						name: 'next_gen',
-						value: 'next_gen'
+						name: 'nextgen',
+						value: 'nextgen'
 					},
 				]
 			}, {

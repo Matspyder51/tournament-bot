@@ -179,7 +179,7 @@ export abstract class BracketController {
 					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **||${roomName}||\n**Mot de passe: **||${roomPassword}||`);
 			}
 			isFirst = false;
-			desc += `||${roomName}|| ||${roomPassword}||`;
+			desc += ` ||${roomName}|| ||${roomPassword}||`;
 
 			if (chan && chan.isText()) {
 				chan.send(desc);

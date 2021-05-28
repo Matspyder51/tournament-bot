@@ -13,6 +13,10 @@ export class Participant {
 		return this._rank;
 	}
 
+	public set rank(value: Rank) {
+		this._rank = value;
+	}
+
 	private _inTeam: boolean = false;
 	public get inTeam(): boolean {
 		return this._inTeam;
@@ -29,10 +33,6 @@ export class Participant {
 
 	public removeFromTeam() {
 		this._inTeam = false;
-	}
-
-	public setRank(newRank: Rank) {
-		this._rank = newRank;
 	}
 
 	public toString(checkIfFree = false, long = false) {

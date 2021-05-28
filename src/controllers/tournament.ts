@@ -764,7 +764,7 @@ new Command('setrank', (interaction: Discord.CommandInteraction, args: Discord.C
 	if (!participant)
 		return interaction.reply('Ce joueur n\'est pas dans le tournoi', {ephemeral: true});
 
-	participant.setRank(rank);
+	participant.rank = rank;
 	interaction.reply('Rang du joueur modifié', {ephemeral: true});
 
 }, {

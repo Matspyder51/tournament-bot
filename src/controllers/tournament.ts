@@ -76,6 +76,37 @@ export abstract class TournamentController {
 		return team;
 	}
 
+	public static AddParticipantToTeam(teamIndex: number, member: Discord.GuildMember): boolean {
+
+		const team = this._teams[teamIndex];
+		if (!team)
+			return false;
+
+		const part = this._participants.find(x => x.discord == member);
+		if (!part || part.inTeam)
+			return false;
+
+		team.AddParticipant(part);
+		part.addToTeam();
+
+		return true;
+	}
+
+	public static RemoveParticipantFromTeam(member: Discord.GuildMember): boolean {
+		const team = this._teams.find(x => x.players.findIndex(y => y.discord == member) != -1);
+
+		if (!team)
+			return false;
+
+		const removed = team.players.splice(team.players.findIndex(x => x.discord == member), 1);
+		if (removed.length < 1)
+			return false;
+
+		removed[0].removeFromTeam();
+
+		return true;
+	}
+
 	public static DeleteTeam(index: number): boolean {
 		if (!this._teams[index])
 			return false;

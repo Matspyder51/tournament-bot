@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Participant } from "../models/participant";
 import { GetAllRanks } from "../models/rank";
 import { GenerateTeams } from "./generateTeamsNext";

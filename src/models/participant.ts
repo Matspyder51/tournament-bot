@@ -17,7 +17,7 @@ export class Participant {
 		this._rank = value;
 	}
 
-	private _inTeam: boolean = false;
+	private _inTeam = false;
 	public get inTeam(): boolean {
 		return this._inTeam;
 	}
@@ -27,15 +27,15 @@ export class Participant {
 		this._rank = rank;
 	}
 
-	public addToTeam() {
+	public addToTeam(): void {
 		this._inTeam = true;
 	}
 
-	public removeFromTeam() {
+	public removeFromTeam(): void {
 		this._inTeam = false;
 	}
 
-	public toString(checkIfFree = false, long = false) {
+	public toString(checkIfFree = false, long = false): string {
 		return `${checkIfFree && this._inTeam ? '~~' : ''}${this._discord} - ${this._rank.emoji}${long ? ' ' + this._rank.label : ''}${checkIfFree && this._inTeam ? '~~' : ''}`;
 	}
 

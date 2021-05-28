@@ -1,4 +1,4 @@
-import { Participant } from "./participant";
+import { Participant } from './participant';
 
 export class Team {
 	constructor(public players: Participant[]) {}
@@ -12,7 +12,7 @@ export class Team {
 		return true;
 	}
 
-	public toString(checkIfFree?: boolean, long?: boolean) {
+	public toString(checkIfFree?: boolean, long?: boolean): string {
 		let msg = '';
 		let isFirst = true;
 		for (const ply of this.players) {

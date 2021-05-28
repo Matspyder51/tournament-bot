@@ -8,5 +8,5 @@ export function GetRandomWord(): string {
 export function GetRandomNumber(min: number, max: number, round?: boolean): number {
 	let value = Math.random() * (max - min) + min;
 	value = round ? Math.round(value) : value;
-  return value;
+	return value;
 }

@@ -1,7 +1,8 @@
-import { Participant } from "../models/participant";
-import { Rank } from "../models/rank";
+import { Participant } from '../models/participant';
+import { Rank } from '../models/rank';
 
 // TEAM GENRERATION V0.1.r by Danaen
+/* eslint-disable */
 
 interface Player extends Participant {
     mmr?: number

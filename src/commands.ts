@@ -5,7 +5,7 @@ const load = true;
 
 const commands: Command[] = [];
 let toAdd: Command[] = [];
-export async function LoadAllCommands() {
+export async function LoadAllCommands(): Promise<void> {
 	Bot.guild.commands.set(toAdd.map(x => x.toDiscordFormat())).then((commands) => {
 		commands.forEach((cmd) => {
 			const com = GetCommand(cmd.name);
@@ -38,7 +38,7 @@ type onExecCallbackType = (((interaction: Discord.CommandInteraction, args: Disc
 
 export class Command {
 
-	private _isParent: boolean = false;
+	private _isParent = false;
 	public get isParent(): boolean {
 		return this._isParent;
 	}
@@ -48,7 +48,7 @@ export class Command {
 	}
 
 	public get isAdmin(): boolean {
-		return this._settings!.isAdmin || false;
+		return this._settings?.isAdmin || false;
 	}
 
 	public get onExec(): onExecCallbackType {
@@ -63,7 +63,7 @@ export class Command {
 				toAdd.push(this);
 			} else {
 				Bot.guild.commands.create(this.toDiscordFormat()).then(cmd => {
-					if (this._settings!.isAdmin) {
+					if (this._settings?.isAdmin) {
 						cmd.setPermissions([
 							{
 								id: Config.Admin.AdminCommandsRoleId,
@@ -82,9 +82,9 @@ export class Command {
 	public toDiscordFormat(): Discord.ApplicationCommandData {
 		const data =  {
 			name: this._name,
-			description: this._settings!.description || 'Pas de description',
+			description: this._settings?.description || 'Pas de description',
 			options: this._args
-		}
+		};
 		return data;
 	}
 

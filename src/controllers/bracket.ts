@@ -27,7 +27,7 @@ export abstract class BracketController {
 	private static current_teams: Team[] = [];
 	private static matchesListMsg: Discord.Message[] = [];
 
-	public static Initialize() {
+	public static Initialize(): void {
 		this.current_teams = [...TournamentController.teams];
 
 		this.InitNewRound(true);
@@ -37,7 +37,7 @@ export abstract class BracketController {
 		this.SendMatchesInformations();
 	}
 
-	public static InitNewRound(first?: boolean) {
+	public static InitNewRound(first?: boolean): void {
 		this._bracket.current_round++;
 
 		if (!first)
@@ -49,8 +49,8 @@ export abstract class BracketController {
 			this._bracket.matchs[this._bracket.current_round] = [];
 	}
 
-	public static GenerateRoundMatchs() {
-		let _temp_teams = [...this.current_teams];
+	public static GenerateRoundMatchs(): void {
+		const _temp_teams = [...this.current_teams];
 
 		const firstRoundsTeams = [];
 		while (Math.log2(_temp_teams.length) % 1 != 0) {
@@ -58,7 +58,7 @@ export abstract class BracketController {
 		}
 
 		if (firstRoundsTeams.length > 0) {
-			for (let team of firstRoundsTeams) {
+			for (const team of firstRoundsTeams) {
 				this._bracket.matchs[this._bracket.current_round].push(new Match(team, _temp_teams.splice(GetRandomNumber(0, _temp_teams.length - 1, true), 1)[0]));
 			}
 
@@ -70,14 +70,14 @@ export abstract class BracketController {
 		}
 	}
 
-	public static async SendMatchesList(forceNew?: boolean) {
+	public static async SendMatchesList(forceNew?: boolean): Promise<void> {
 		const guild = await Bot.Client.guilds.fetch(Config.GuildId);
 		const chan = await guild.channels.resolve(Config.MatchListChannel);
 		
 		if (!chan || !chan.isText())
 			return;
 		
-		let messages = []
+		const messages = [];
 		let desc = `Liste des matchs du tour ${this._bracket.current_round + 1} :\n`;
 
 		let isFirst = true;
@@ -142,7 +142,7 @@ export abstract class BracketController {
 		}
 	}
 
-	public static async SendMatchesInformations() {
+	public static async SendMatchesInformations(): Promise<void> {
 		let isFirst = true;
 		const guild = Bot.guild;
 		const chan = await guild.channels.resolve(Config.Admin.MatchesLogsChannel);
@@ -163,7 +163,7 @@ export abstract class BracketController {
 			for (const player of match.upTeam.players) {
 				if (isFirst2) {
 					if (!DEBUG_MODE)
-						(await player.discord?.createDM())?.send("En tant que Capitaine de ton équipe, c'est a toi de créer la partie privée");
+						(await player.discord?.createDM())?.send('En tant que Capitaine de ton équipe, c\'est a toi de créer la partie privée');
 				}
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;

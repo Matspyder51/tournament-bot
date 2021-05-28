@@ -1,4 +1,4 @@
-import { Team } from "./team";
+import { Team } from './team';
 
 export enum WinnerTeam {
 	UP = 0,

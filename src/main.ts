@@ -2,7 +2,7 @@ import * as Config from './config.json';
 import * as Discord from 'discord.js';
 import { GetCommand, LoadAllCommands } from './commands';
 import { LoadRanksEmojis } from './models/rank';
-import "./controllers/tournament";
+import './controllers/tournament';
 
 export const DEBUG_MODE = Config.DebugMode;
 
@@ -18,7 +18,7 @@ class Bot {
 		return this._guild;
 	}
 
-	private _ready: boolean = false;
+	private _ready = false;
 	public get Ready(): boolean {
 		return this._ready;
 	}
@@ -57,7 +57,7 @@ class Bot {
 				cmd.onExec(interaction, interaction.options);
 			});
 
-			console.log("Bot is ready");
+			console.log('Bot is ready');
 		});
 	}
 

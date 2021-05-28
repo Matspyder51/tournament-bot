@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Participant } from "../models/participant";
 import { Rank } from "../models/rank";
 

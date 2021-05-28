@@ -9,7 +9,7 @@ import { GetRandomNumber } from '../utils';
 import * as Config from '../config.json';
 import { GenerateTeams } from '../services/generateTeamsNext';
 import { main } from '../services/generateTeams';
-import { join } from 'path'
+import { join } from 'path';
 import low from 'lowdb';
 import FileSync from 'lowdb/adapters/FileSync';
 
@@ -20,7 +20,7 @@ enum TournamentState {
 	WAITING = 2,
 	IN_PROGRESS = 3,
 	ENDED
-};
+}
 
 type TournamentData = {
 	tournament?: {
@@ -48,7 +48,7 @@ export abstract class TournamentController {
 	private static participantsMsg: Discord.Message[];
 	private static teamMsg: Discord.Message[];
 
-	public static memberSince: number = 10800000;
+	public static memberSince = 10800000;
 
 	public static AddTeam(membersIndexes: number[]): Team | undefined {
 		if (membersIndexes.length === 0 ) {
@@ -57,7 +57,7 @@ export abstract class TournamentController {
 
 		for (const member of membersIndexes) {
 			let isOk = true;
-			if (member == NaN)
+			if (isNaN(member))
 				isOk = false;
 
 			const part = this.participants[member];
@@ -131,7 +131,7 @@ export abstract class TournamentController {
 		return true;
 	}
 
-	public static ClearTeams() {
+	public static ClearTeams(): void {
 		this._teams.forEach((team) => {
 			team.players.forEach(x => x.removeFromTeam());
 		});
@@ -170,7 +170,7 @@ export abstract class TournamentController {
 		return true;
 	}
 
-	public static RemoveParticipant(discord: Discord.GuildMember, force: boolean = false): boolean {
+	public static RemoveParticipant(discord: Discord.GuildMember, force = false): boolean {
 		if (!force && this._state != TournamentState.REGISTERING)
 			return false;
 
@@ -198,7 +198,7 @@ export abstract class TournamentController {
 
 	public static FormatParticipantsToDiscord(channel?: Discord.TextChannel, save = false, forceRefresh = false): Discord.MessageEmbed[] {
 		let currIndex = 0;
-		let msgs: Discord.MessageEmbed[] = [];
+		const msgs: Discord.MessageEmbed[] = [];
 		msgs[0] = new Discord.MessageEmbed();
 		msgs[currIndex].setTitle(`Liste des participants (${this._participants.length} participants) :`);
 
@@ -229,8 +229,7 @@ export abstract class TournamentController {
 			if (forceRefresh || this.participantsMsg == null || this.participantsMsg.length == 0) {
 				this.participantsMsg = [];
 				msgs.forEach((msg, index) => {
-					//@ts-ignore
-					channel.send(msg).then((dmsg) => {
+					channel?.send(msg).then((dmsg) => {
 						if (save)
 							this.participantsMsg[index] = dmsg;
 					});
@@ -238,8 +237,7 @@ export abstract class TournamentController {
 			} else {
 				msgs.forEach((msg, index) => {
 					if (this.participantsMsg[index] == undefined) {
-						//@ts-ignore
-						channel.send(msg).then((dmsg) => {
+						channel?.send(msg).then((dmsg) => {
 							if (save)
 								this.participantsMsg[index] = dmsg;
 						});
@@ -263,7 +261,7 @@ export abstract class TournamentController {
 		let desc = '';
 
 		this._teams.forEach((team, index) => {
-			let toAdd = ``;
+			let toAdd = '';
 			toAdd += `${!isFirst ? '\n': ''}${index + 1} :`;
 			let firstPlayer = true;
 			team.players.sort((a, b) => b.rank.seed - a.rank.seed).forEach((player) => {
@@ -304,9 +302,9 @@ export abstract class TournamentController {
 			} else {
 				this.teamMsg = [];
 				messages.forEach((msg, index) => {
-						channel?.send(msg).then((msg) => {
-							this.teamMsg[index] = msg;
-						});
+					channel?.send(msg).then((msg) => {
+						this.teamMsg[index] = msg;
+					});
 				});
 
 				if (force || !this.participantsMsg)
@@ -334,23 +332,23 @@ export abstract class TournamentController {
 		return true;
 	}
 
-	public static EndTournament() {
+	public static EndTournament(): void {
 		if (this._state != TournamentState.CLOSED)
 			return;
 
 		this._state = TournamentState.CLOSED;
 	}
 
-	public static ResetTournament() {
+	public static ResetTournament(): void {
 		this._participants = [];
 		this._teams = [];
 		this.participantsMsg = [];
 		this.teamMsg = [];
 	}
 
-	public static SaveTournament() {
+	public static SaveTournament(): void {
 		const file = join(__dirname, '../../', 'db.json');
-		console.log(join(__dirname, '../../', 'db.json'))
+		console.log(join(__dirname, '../../', 'db.json'));
 		const adapter = new FileSync<TournamentData>(file);
 		const db = low(adapter);
 
@@ -359,13 +357,13 @@ export abstract class TournamentController {
 		db.defaults({
 			tournament: {
 				participants: this._participants.map(x => {
-					return {id: x.discord?.id, rank: x.rank.name}
+					return {id: x.discord?.id, rank: x.rank.name};
 				})
 			}
 		}).write();
 	}
 
-	public static ClearSavedTournament() {
+	public static ClearSavedTournament(): void {
 		const file = join(__dirname, '../../', 'db.json');
 		const adapter = new FileSync<TournamentData>(file);
 		const db = low(adapter);
@@ -384,7 +382,7 @@ export abstract class TournamentController {
 			return false;
 
 		const participants = db.get('tournament.participants').value();
-		this._participants = participants.map((x: any) => new Participant(Bot.guild.members.resolve(x.id), GetRankByName(x.rank) || Ranks[0]));
+		this._participants = participants.map((x: { id: Discord.GuildMember; rank: string; }) => new Participant(Bot.guild.members.resolve(x.id), GetRankByName(x.rank) || Ranks[0]));
 
 		return true;
 	}
@@ -416,9 +414,9 @@ new Command('participants', async (interaction: Discord.CommandInteraction, args
 	}
 ]);
 
-new Command('open', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+new Command('open', (interaction: Discord.CommandInteraction) => {
 	if (TournamentController.state != TournamentState.CLOSED)
-		return interaction.reply('Un tournoi est déjà en cours', {ephemeral: true})
+		return interaction.reply('Un tournoi est déjà en cours', {ephemeral: true});
 
 	TournamentController.ResetTournament();
 
@@ -426,25 +424,25 @@ new Command('open', (interaction: Discord.CommandInteraction, args: Discord.Comm
 		SetDebugParticipants(interaction.member);
 
 	if (TournamentController.OpenRegistrations()) {
-		interaction.reply("Ouverture des inscriptions");
+		interaction.reply('Ouverture des inscriptions');
 	}
 }, {
 	isAdmin: true,
 	description: 'Ouvre les inscriptions pour un tournoi'
 });
 
-new Command('reopen', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+new Command('reopen', (interaction: Discord.CommandInteraction) => {
 	if (TournamentController.state != TournamentState.WAITING)
-		return interaction.reply("Impossible, les matchs on déjà commencés", {ephemeral: true});
+		return interaction.reply('Impossible, les matchs on déjà commencés', {ephemeral: true});
 
 	if (TournamentController.OpenRegistrations(true))
-		interaction.reply("Réouverture des inscriptions pour le tournoi");
+		interaction.reply('Réouverture des inscriptions pour le tournoi');
 }, {
 	isAdmin: true,
 	description: 'Réouvre les inscriptions au tournoi'
 });
 
-new Command('close', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+new Command('close', (interaction: Discord.CommandInteraction) => {
 	if (TournamentController.state != TournamentState.REGISTERING)
 		return interaction.reply('Aucun tournoi en attente d\'inscriptions', {ephemeral: true});
 
@@ -464,9 +462,10 @@ new Command('register', (interaction: Discord.CommandInteraction, args: Discord.
 
 	const memberSince = Date.now() - interaction.member.joinedTimestamp;
 	if (memberSince < TournamentController.memberSince) {
-		return interaction.reply(`Vous avez rejoint le serveur Discord depuis moins de 3h, vous ne pouvez pas encore vous inscrire au tournoi`);
+		return interaction.reply('Vous avez rejoint le serveur Discord depuis moins de 3h, vous ne pouvez pas encore vous inscrire au tournoi');
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	const rank = Ranks.find(x => x.name === (<string>args[0].value!).toLowerCase() || x.aliases.includes((<string>args[0].value!).toLowerCase()));
 	if (!rank)
 		return interaction.reply('Votre rank ne correspond a aucun rank connu, veuillez rééssayer', {ephemeral: true});
@@ -476,9 +475,9 @@ new Command('register', (interaction: Discord.CommandInteraction, args: Discord.
 		interaction.defer({ephemeral: true});
 		interaction.member.createDM().then((chan: Discord.TextChannel) => {
 			interaction.editReply('Inscription en cours');
-			chan.send("Vous avez été inscrit au tournoi").then(() => {
+			chan.send('Vous avez été inscrit au tournoi').then(() => {
 				interaction.editReply('Inscription validée');
-			}).catch((reason) => {
+			}).catch(() => {
 				interaction.editReply('Je ne peut pas vous envoyer de message privé, vérifiez vos paramètres de confidentialité et réessayez');
 				TournamentController.RemoveParticipant(interaction.member);
 			});
@@ -499,12 +498,12 @@ new Command('register', (interaction: Discord.CommandInteraction, args: Discord.
 			return {
 				name: x.label,
 				value: x.name
-			}
+			};
 		})
 	}
 ]);
 
-new Command('quit', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+new Command('quit', (interaction: Discord.CommandInteraction) => {
 	if (TournamentController.RemoveParticipant(interaction.member))
 		interaction.reply('Vous vous êtes désinscrit du tournoi', {ephemeral: true});
 	else
@@ -537,79 +536,86 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 	interaction.editReply('Traitement en cours');
 
 	if (TournamentController.state != TournamentState.WAITING)
-		return interaction.editReply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
+		return interaction.editReply('Veuillez fermer les inscriptions au tournoi avant de modifier des équipes');
 
 	switch (args[0].name) {
-		case 'create':
-			const players = (<string>args[0].options![0].value).split(' ').map(x => Number(x) - 1);
+	case 'create':
+		// eslint-disable-next-line no-case-declarations
+		const players = (<string>args[0].options?.[0].value).split(' ').map(x => Number(x) - 1);
 
-			if (!players.every(x => x != NaN))
-				return interaction.editReply('Erreur: Vérifiez le N° des joueurs');
+		if (!players.every(x => isNaN(x)))
+			return interaction.editReply('Erreur: Vérifiez le N° des joueurs');
 
-			const newTeam = TournamentController.AddTeam(players);
-			if (!newTeam)
-				return interaction.editReply('Une erreur est survenue');
+		// eslint-disable-next-line no-case-declarations
+		const newTeam = TournamentController.AddTeam(players);
+		if (!newTeam)
+			return interaction.editReply('Une erreur est survenue');
 
-			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
-			interaction.editReply('Équipe ajoutée');
-			break;
+		TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+		interaction.editReply('Équipe ajoutée');
+		break;
 
-		case 'delete':
-			const teamId = (<number>args[0].options![0].value) - 1;
-			TournamentController.DeleteTeam(teamId);
+	case 'delete':
+		// eslint-disable-next-line no-case-declarations
+		const teamId = (<number>args[0].options?.[0].value) - 1;
+		TournamentController.DeleteTeam(teamId);
 
-			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
-			interaction.editReply('Équipe supprimée');
-			break;
+		TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+		interaction.editReply('Équipe supprimée');
+		break;
 
-		case 'clear':
-			TournamentController.ClearTeams();
-			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
-			interaction.editReply('Toutes les équipes on été supprimées');
-			break;
+	case 'clear':
+		TournamentController.ClearTeams();
+		TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+		interaction.editReply('Toutes les équipes on été supprimées');
+		break;
 
-		case 'roll':
-			const maxTeamSize = args[0].options![0] ? Number(args[0].options![0].value) : undefined;
-			const version = args[0].options![1] ? String(args[0].options![1]?.value) : "nextgen";
-			const rankingModifier = args[0].options![2] ? Number(args[0].options![2]?.value) : undefined;
+	case 'roll':
+		// eslint-disable-next-line no-case-declarations
+		const maxTeamSize = args[0].options?.[0] ? Number(args[0].options?.[0].value) : undefined;
+		// eslint-disable-next-line no-case-declarations
+		const version = args[0].options?.[1] ? String(args[0].options?.[1]?.value) : 'nextgen';
+		// eslint-disable-next-line no-case-declarations
+		const rankingModifier = args[0].options?.[2] ? Number(args[0].options?.[2]?.value) : undefined;
 
-			// reset teams
-			TournamentController.ClearTeams();
+		// reset teams
+		TournamentController.ClearTeams();
 
-			// generate teams
-			let teams;
-			if (version === "legacy" ) {
-				teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
-			}
-			else if (version === "nextgen") {
-				teams = new GenerateTeams(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
-				teams = teams.getTab()?.teams;
-			}
-			else break;
+		// generate teams
+		// eslint-disable-next-line no-case-declarations
+		let teams;
+		if (version === 'legacy') {
+			teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
+		}
+		else if (version === 'nextgen') {
+			teams = new GenerateTeams(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
+			teams = teams.getTab()?.teams;
+		}
+		else break;
 
-			if (!!teams) {
-				(<Discord.TextChannel>Bot.guild.channels.resolve("840702261008400406")).send(JSON.stringify(teams, null, 2));
-				for (const team of teams) {
-					const playersIndex: number[] = [];
-					for (const player of team) {
-						const a = TournamentController.participants.findIndex(p => {
-							return p.discord?.id === player.discord?.id
-						})
-						if (a !== -1) playersIndex.push(a);
-					}
-					const newTeam = TournamentController.AddTeam(playersIndex);
-							
-					if (!newTeam) {
-						TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
-						return interaction.editReply(`Impossible de créer une des équipes (${playersIndex.join(', ')})`);
-					}
+		if (teams != null) {
+			(<Discord.TextChannel>Bot.guild.channels.resolve('840702261008400406')).send(JSON.stringify(teams, null, 2));
+			for (const team of teams) {
+				const playersIndex: number[] = [];
+				for (const player of team) {
+					const a = TournamentController.participants.findIndex(p => {
+						return p.discord?.id === player.discord?.id;
+					});
+					if (a !== -1) playersIndex.push(a);
 				}
-				TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
-				return interaction.editReply('Equipes générées');
+				const newTeam = TournamentController.AddTeam(playersIndex);
+						
+				if (!newTeam) {
+					TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+					return interaction.editReply(`Impossible de créer une des équipes (${playersIndex.join(', ')})`);
+				}
 			}
-			else {
-				return interaction.editReply(`Une erreur est survenue lors de la creation des equipes`);
-			}
+			TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
+			return interaction.editReply('Equipes générées');
+		}
+		else {
+			return interaction.editReply('Une erreur est survenue lors de la creation des equipes');
+		}
 	}
 }, {
 	isAdmin: true,
@@ -728,7 +734,7 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 // 	}
 // }, true);
 
-new Command('start', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+new Command('start', (interaction: Discord.CommandInteraction) => {
 	BracketController.Initialize();
 
 	TournamentController.ClearSavedTournament();
@@ -739,7 +745,7 @@ new Command('start', (interaction: Discord.CommandInteraction, args: Discord.Com
 	description: 'Commence les matchs d\'un tournoi'
 });
 
-new Command('load', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+new Command('load', (interaction: Discord.CommandInteraction) => {
 	interaction.defer({ephemeral: true});
 	(async () => {
 		const loaded = await TournamentController.LoadSavedTournament();
@@ -756,6 +762,7 @@ new Command('load', (interaction: Discord.CommandInteraction, args: Discord.Comm
 });
 
 new Command('setrank', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	const rank = Ranks.find(x => x.name === (<string>args[1].value!).toLowerCase() || x.aliases.includes((<string>args[1].value!).toLowerCase()));
 	if (!rank)
 		return interaction.reply('Rang introuvable', {ephemeral: true});
@@ -785,12 +792,13 @@ new Command('setrank', (interaction: Discord.CommandInteraction, args: Discord.C
 			return {
 				name: x.label,
 				value: x.name
-			}
+			};
 		})
 	}
 ]);
 
 new Command('addplayer', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	const rank = Ranks.find(x => x.name === (<string>args[1].value!).toLowerCase() || x.aliases.includes((<string>args[1].value!).toLowerCase()));
 	if (!rank)
 		return interaction.reply('Rang introuvable', {ephemeral: true});
@@ -817,7 +825,7 @@ new Command('addplayer', (interaction: Discord.CommandInteraction, args: Discord
 			return {
 				name: x.label,
 				value: x.name
-			}
+			};
 		}),
 		required: true
 	}
@@ -832,7 +840,7 @@ new Command('wait_duration', (interaction: Discord.CommandInteraction, args: Dis
 	}
 
 	const hours = <number>args[0].value;
-	if (hours == null || Number(hours) == NaN)
+	if (hours == null || isNaN(Number(hours)))
 		return interaction.reply('Durée invalide', {ephemeral: true});
 
 	TournamentController.memberSince = hours * (3600000);

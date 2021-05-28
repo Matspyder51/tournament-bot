@@ -163,3 +163,7 @@ export function LoadRanksEmojis() {
 		rank.emoji = emote;
 	});
 }
+
+export function GetRankByName(name: string) {
+	return ranks.find(x => x.name == name);
+}

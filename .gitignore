@@ -90,5 +90,6 @@ typings/
 dist/
 
 config.json
+db.json
 
 yarn.lock

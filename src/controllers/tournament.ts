@@ -1,6 +1,6 @@
 import { Participant } from '../models/participant';
 import * as Discord from 'discord.js';
-import { Rank, Ranks } from '../models/rank';
+import { GetRankByName, Rank, Ranks } from '../models/rank';
 import { Command } from '../commands';
 import { Bot, DEBUG_MODE } from '../main';
 import { Team } from '../models/team';
@@ -9,6 +9,9 @@ import { GetRandomNumber } from '../utils';
 import * as Config from '../config.json';
 import { GenerateTeams } from '../services/generateTeamsNext';
 import { main } from '../services/generateTeams';
+import { join } from 'path'
+import low from 'lowdb';
+import FileSync from 'lowdb/adapters/FileSync';
 
 
 enum TournamentState {
@@ -18,6 +21,12 @@ enum TournamentState {
 	IN_PROGRESS = 3,
 	ENDED
 };
+
+type TournamentData = {
+	tournament?: {
+		participants: Array<{id: string, rank: string}>,
+	}
+}
 
 export abstract class TournamentController {
 
@@ -73,6 +82,8 @@ export abstract class TournamentController {
 
 		this._teams.push(team);
 
+		this.SaveTournament();
+
 		return team;
 	}
 
@@ -115,6 +126,8 @@ export abstract class TournamentController {
 
 		this._teams.splice(index, 1);
 
+		this.SaveTournament();
+
 		return true;
 	}
 
@@ -126,6 +139,8 @@ export abstract class TournamentController {
 		this.participants.forEach(x => x.removeFromTeam());
 
 		this._teams = [];
+
+		this.SaveTournament();
 	}
 
 	public static IsPlayerInTournament(player: Discord.GuildMember): boolean {
@@ -142,6 +157,8 @@ export abstract class TournamentController {
 			return 'Vous êtes déjà inscrit dans le tournoi';
 
 		this._participants.push(new Participant(discord, rank));
+
+		this.SaveTournament();
 
 		if (!force) {
 			const channel = Bot.guild.channels.resolve(Config.Admin.RegisterLogsChannel);
@@ -173,6 +190,8 @@ export abstract class TournamentController {
 		if (channel != null && channel.isText()) {
 			channel.send(`${discord} s'est retirer du tournoi (Nombre de participants: ${this._participants.length})`);
 		}
+
+		this.SaveTournament();
 
 		return true;
 	}
@@ -311,6 +330,7 @@ export abstract class TournamentController {
 			return false;
 
 		this._state = TournamentState.WAITING;
+		this.SaveTournament();
 		return true;
 	}
 
@@ -328,6 +348,47 @@ export abstract class TournamentController {
 		this.teamMsg = [];
 	}
 
+	public static SaveTournament() {
+		const file = join(__dirname, '../../', 'db.json');
+		console.log(join(__dirname, '../../', 'db.json'))
+		const adapter = new FileSync<TournamentData>(file);
+		const db = low(adapter);
+
+		db.setState({}).write();
+
+		db.defaults({
+			tournament: {
+				participants: this._participants.map(x => {
+					return {id: x.discord?.id, rank: x.rank.name}
+				})
+			}
+		}).write();
+	}
+
+	public static ClearSavedTournament() {
+		const file = join(__dirname, '../../', 'db.json');
+		const adapter = new FileSync<TournamentData>(file);
+		const db = low(adapter);
+
+		db.unset('tournament').write();
+	}
+
+	public static LoadSavedTournament(): boolean {
+		const file = join(__dirname, '../../', 'db.json');
+		const adapter = new FileSync<TournamentData>(file);
+		const db = low(adapter);
+
+		const tournament = db.get('tournament');
+
+		if (tournament == null)
+			return false;
+
+		const participants = db.get('tournament.participants').value();
+		this._participants = participants.map((x: any) => new Participant(Bot.guild.members.resolve(x.id), GetRankByName(x.rank) || Ranks[0]));
+
+		return true;
+	}
+
 }
 
 function SetDebugParticipants(from: Discord.GuildMember) {
@@ -338,10 +399,10 @@ function SetDebugParticipants(from: Discord.GuildMember) {
 	}
 }
 
-new Command('participants', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
-	interaction.reply('Traitement en cours');
+new Command('participants', async (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	await interaction.reply('Traitement en cours');
 	if (TournamentController.participants.length <= 0)
-		return interaction.reply('Personne n\'est inscrit pour le moment', {ephemeral: true});
+		return interaction.editReply('Personne n\'est inscrit pour le moment');
 	TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel, (<boolean>args[0]?.value));
 	interaction.deleteReply();
 }, {
@@ -670,10 +731,28 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 new Command('start', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 	BracketController.Initialize();
 
+	TournamentController.ClearSavedTournament();
+
 	interaction.reply('Démarage du tournoi', {ephemeral: true});
 }, {
 	isAdmin: true,
 	description: 'Commence les matchs d\'un tournoi'
+});
+
+new Command('load', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+	interaction.defer({ephemeral: true});
+	(async () => {
+		const loaded = await TournamentController.LoadSavedTournament();
+
+		if (!loaded)
+			interaction.editReply('Une erreur est survenue');
+
+		interaction.editReply('Informations du dernier tournoi chargés');
+
+	})();
+}, {
+	isAdmin: true,
+	description: 'Si le bot crash'
 });
 
 new Command('setrank', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {

@@ -13,7 +13,9 @@
     "docker down": "docker-compose -f ./Docker/docker-compose.yml -p bot-tournoi down"
   },
   "dependencies": {
+    "@types/lowdb": "^1.0.10",
     "discord.js": "discordjs/discord.js#master",
+    "lowdb": "1.0.0",
     "source-map-support": "^0.5.19",
     "typescript": "^4.1.3"
   },

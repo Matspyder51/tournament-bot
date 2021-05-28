@@ -381,7 +381,7 @@ new Command('register', (interaction: Discord.CommandInteraction, args: Discord.
 
 	const isRegistered = TournamentController.AddParticipant(interaction.member, rank);
 	if (isRegistered === true) {
-		interaction.defer(true);
+		interaction.defer({ephemeral: true});
 		interaction.member.createDM().then((chan: Discord.TextChannel) => {
 			interaction.editReply('Inscription en cours');
 			chan.send("Vous avez été inscrit au tournoi").then(() => {
@@ -441,7 +441,7 @@ new Command('kick', (interaction: Discord.CommandInteraction, args: Discord.Comm
 
 new Command('team', async (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 
-	interaction.defer(true);
+	interaction.defer({ephemeral: true});
 	interaction.editReply('Traitement en cours');
 
 	if (TournamentController.state != TournamentState.WAITING)

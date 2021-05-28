@@ -348,7 +348,6 @@ export abstract class TournamentController {
 
 	public static SaveTournament(): void {
 		const file = join(__dirname, '../../', 'db.json');
-		console.log(join(__dirname, '../../', 'db.json'));
 		const adapter = new FileSync<TournamentData>(file);
 		const db = low(adapter);
 

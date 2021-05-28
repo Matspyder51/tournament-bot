@@ -183,7 +183,11 @@ export abstract class TournamentController {
 
 		const team = this.teams.findIndex(x => x.players.find(y => y.discord == discord));
 		if (team != null) {
-			this.DeleteTeam(team);
+			if (this._state == TournamentState.IN_PROGRESS) {
+				this.RemoveParticipantFromTeam(discord);
+			} else {
+				this.DeleteTeam(team);
+			}
 		}
 
 		const channel = Bot.guild.channels.resolve(Config.Admin.RegisterLogsChannel);
@@ -542,7 +546,7 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 		// eslint-disable-next-line no-case-declarations
 		const players = (<string>args[0].options?.[0].value).split(' ').map(x => Number(x) - 1);
 
-		if (!players.every(x => isNaN(x)))
+		if (!players.every(x => !isNaN(x)))
 			return interaction.editReply('Erreur: Vérifiez le N° des joueurs');
 
 		// eslint-disable-next-line no-case-declarations

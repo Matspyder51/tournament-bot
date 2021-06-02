@@ -1,126 +1,203 @@
 /* eslint-disable */
-import { Participant } from "../models/participant";
-import { Rank } from "../models/rank";
+/* TEAM GENRERATION V0.3a by Danaen
 
-// TEAM GENRERATION V0.2.a by Danaen
+todos :
+- combinatorial search for players to team (instead of looking for 1 mate at a time, include in the potential mates array of players combination that could fill the team)
+- mates comparison between teams (when creating a team look for other team with similar size players rank to improve equity between teams)
+- Full unit testing
+- end to end test
+- players and result on disk logging for statistics extract
+- gc1 breakdown for solo teams
+- exponantial regression to find best equation for rank calculation
 
-interface Player extends Participant {
-    mmr: number
+*/
+
+// INTERFACES DECLARATIONS ############################################################################################
+
+interface Rank {
+    name: string,
+    seed: number
 }
 
-type Team = Player[];
-
-interface TeamMetrics {
-    teamAverageMmr: number,
-    teamCombineMmr: number
+interface Metrics {
+    average: number,
+    median: number,
+    combined: number,
+    highest: any,
+    lowest: any
 };
 
-interface TeamsMetrics {
-    highestTeam?: number,
-    lowestTeam?: number,
-    average: number,
-    median: number
+interface Health {
+    isHealthy: boolean;
+    status?: string
 }
 
+// NEW METHODS FOR MATH ###############################################################################################
+
+declare global {
+    interface Math {
+        avg(numbers: number[]): number;
+        median(numbers: number[]): number;
+    }
+}
+
+Math.avg = function (numbers: number[]): number {
+    let total: number = 0;
+    numbers.forEach(number => total += number);
+    return Math.floor(total / numbers.length);
+}
+
+Math.median = function (numbers: number[]): number {
+    if (numbers.length === 1)
+        return numbers[0];
+    if (numbers.length % 2 === 0)
+        return (numbers[Math.floor(numbers.length / 2)] + numbers[Math.ceil(numbers.length / 2)]) / 2;
+    else
+        return numbers[(numbers.length + 1) / 2];
+}
+
+// NEW METHODS FOR SET ################################################################################################
+
+declare global {
+    interface Set<T> {
+        find(callbackfn: (element: T, index?: number, set?: Set<T>) => boolean): T | undefined ; 
+        first(): T;
+        rand(): T;
+        filter(callbackfn: (element: T, index?: number, set?: Set<T>) => boolean): this;
+        map<D>(callbackfn: (element: T, index?: number, set?: Set<T>) => D): this;
+        clone(): this;
+    }
+}
+
+// The find() method returns the value of the first element in the provided set that satisfies the provided testing function.
+// If no values satisfy the testing function, undefined is returned.
+Set.prototype.find = function (this: Set<any>, callbackfn: (element: any, index?: number, set?: Set<any>) => boolean): any | undefined {
+    let i = 0;
+    this.forEach(element => {
+        if (callbackfn(element, i, this)) return element;
+        i++;
+    })
+    return undefined;
+}
+
+// The first() method returns the first element from the provided set.
+Set.prototype.first = function (this: Set<any>): any {
+    return this.entries().next().value[0];
+}
+
+// The rand() method returns a random element from the provided set.
+Set.prototype.rand = function (this: Set<any>): any {
+    return Array.from(this)[Math.floor(Math.random() * this.size)];
+}
+
+// filter
+Set.prototype.filter = function (this: Set<any>, callbackfn: (element: any, index?: number, set?: Set<any>) => boolean): Set<any> {
+    let i = 0;
+    const newSet: Set<any> = new Set();
+    this.forEach(element => {
+        if (callbackfn(element, i, this) === true) newSet.add(element);
+        i++;
+    })
+    return newSet;
+}
+
+// map
+Set.prototype.map = function (this: Set<any>, callbackfn: (element: any, index?: number, set?: Set<any>) => any): Set<any> {
+    let i = 0;
+    const newSet: Set<any> = new Set();
+    this.forEach(element => {
+        const e = callbackfn(element, i, this);
+        if (!!e) newSet.add(e);
+        i++;
+    })
+    return newSet;
+}
+
+// clone
+Set.prototype.clone = function (this: Set<any>): Set<any> {
+    return new Set(this);
+}
+
+// ACTUAL TEAM GENERATION CLASS #######################################################################################
 export class GenerateTeams {
-    private ranks: Rank[];
-    private players: Player[] = [];
-    private maxTeamSize: number;
-    private modifier: number;
 
-    constructor(players: Participant[], ranks: Rank[], maxTeamSize: number = 3, modifier: number = 150) {
-        this.ranks = ranks;
+    public readonly maxTeamSize!: number;
+    public readonly rankingModifier!: number;
+    public readonly players!: Set<Player>; 
 
-        if (maxTeamSize <= 0) throw Error("Max team size must  be greater than 0");
-        else if (maxTeamSize > 4) throw Error("Max team size must be less than 4");
-        else this.maxTeamSize = maxTeamSize;
+    constructor(players: Set<Player>, maxTeamSize: number = 3, rankingModifier: number = 80) { 
+        if (!maxTeamSize) throw Error("Max team size must be defined");
+        if (typeof maxTeamSize !== "number") throw Error("Max team size must be a number");
+        if (maxTeamSize <= 0) throw Error("Max team size must be greater than 0");
+        if (maxTeamSize > 4) throw Error("Max team size must be less than 4");
+        this.maxTeamSize = maxTeamSize;
+        
+        if (!rankingModifier) throw Error("Ranks modifier must be defined");
+        if (typeof rankingModifier !== "number") throw Error("Ranks modifier must be a number");
+        if (rankingModifier < 0) throw Error("Ranks modifier must be greater or equal to 0");
+        this.rankingModifier = rankingModifier;
 
-        if (typeof modifier !== "number") throw Error("Ranks modifier must be a number");
-        if (modifier < 0) throw Error("Ranks modifier must be greater or equal to 0");
-        else this.modifier = modifier;
-
-        try {
-            this.players = this.computePlayersMmr(players);
-        }
-        catch (error) {
-            return error;
-        }
+        this.players = players;
     }
 
-    public getTeams(): {teams: Team[], tolerance: number} {
-        try {
-            const tab = this.generateTeams(this.players);
-            this.teamsHealthCheck(tab.teams, this.players);
-            return tab;
-        }
-        catch (error) {
-            throw Error("Team generation encountered the following  : " + error);
-        }
-    }
-
-    public getTab(): {teams: Team[], tolerance: number} | null{
-        const tabs = [];
-        const limit = this.players.length * 10;
-        let fail = 0;
-        for(let i = 0; i < limit; i++) {
-            console.log(i * 100 / limit + "%");
-            try {
-                const tab = this.getTeams();
-                tabs.push(tab);
-            }
-            catch (error) {
-                console.error(error);
-                console.log(`${fail} tabs failed`);
-                return null;
+    public generateTab(): Tab | null{
+        const tabs: {tab: Tab, tolerance: number}[] = [];
+        for(let i = 0; i < this.players.size * 10; i++) {
+            const result = this.generateTeams();
+            if (result.tab.healthCheck(this.players).isHealthy) {
+                tabs.push(result);
             }
         }
         tabs.sort((a, b) => a.tolerance - b.tolerance);
-        return tabs[0];
+        return tabs[0].tab;
     }
 
-    private generateTeams(players: Player[]): {teams: Team[], tolerance: number, metrics: TeamsMetrics} {
-        const highestRank = this.findHighestRank(players);
+    private generateTeams(): {tab: Tab, tolerance: number} {
+        const highestRank = this.findHighestRank(this.players);
         
         if (!highestRank){
-             throw Error("Can't find the highest ranked player.");
+            console.error(JSON.stringify(Array.from(this.players), null, 2))
+            throw Error("Can't find the highest ranked player.");
         }
         
-        const teams: Team[] = [];
+        const tab = new Tab();
 
         if (highestRank !== null) {
-            players.filter(player => player.rank.name === highestRank).map(player => {
-                teams.push([player]);
-                return player;
-            });
-            players = players.filter(player => player.rank.name !== highestRank);
+            this.players.filter(player => {
+                if (player.rank.name === highestRank.name) {
+                    tab.add(new Team(this.maxTeamSize, new Set([player])));
+                }
+                return player.rank.name !== highestRank.name;
+            })
         }
 
-        let unassignedPlayers: Player[] = [...players];
+        let tempTeams = tab.teams.clone();
+        let unassignedPlayers = this.players.clone();
         let tolerance: number = 0;
-        let tempTeams: Team[] = [...teams];
     
-        while(unassignedPlayers.length > 0 && tolerance < 100 && tempTeams.length > 0) {
+        while(unassignedPlayers.size > 0 && tolerance < 100 && tempTeams.size > 0) {
             try {
-                const metrics = this.teamsMetrics(tempTeams);
-                const team = this.generateTeam([...unassignedPlayers], metrics, tolerance);
-                if (team && team.length > 0) {
-                    const teamMetric = this.teamMetrics(team);
-                    if (teamMetric.teamCombineMmr * 100 / metrics.median < (100 + tolerance) &&
-                        teamMetric.teamCombineMmr * 100 / metrics.median > (100 - tolerance)) 
-                    {
-                        tempTeams.push(team);
-                        unassignedPlayers = unassignedPlayers.filter(player => team.find(p => p.discord?.user.id === player.discord?.user.id) === undefined);
+                const team = this.generateTeam(unassignedPlayers.clone(), tab.metrics(), tolerance);
+                if (team && team.size > 0) {
+                    if (team.metrics().combined * 100 / tab.metrics().median < (100 + tolerance) &&
+                    team.metrics().combined * 100 / tab.metrics().median > (100 - tolerance)) {
+
+                        team.players.forEach(player => {
+                            if (unassignedPlayers.has(player)) unassignedPlayers.delete(player);
+                            else {
+                                throw new Error(""); // TODO define error
+                            }
+                        });
+                        tempTeams.add(team);
                     }
                     else {
-                        tolerance ++;
-                        unassignedPlayers = [...players];
-                        tempTeams = [...teams];
+                        throw new Error(""); // TODO define error
                     }
                 }
                 else {
                     tolerance ++;
-                    unassignedPlayers = [...players];
-                    tempTeams = [...teams];
+                    unassignedPlayers = this.players.clone();
+                    tempTeams = tab.teams.clone();
                 }
             }
             catch (error) {
@@ -128,169 +205,256 @@ export class GenerateTeams {
             }
         }
         return {
-            teams: [...tempTeams],
-            tolerance,
-            metrics: this.teamsMetrics(teams)
+            tab,
+            tolerance
         }
     }
 
-    private generateTeam(players: Player[], metrics: TeamsMetrics, tolerance: number): Team | null{
-        const team: Team = [];
-        const p1 = players[this.getRandomInt(players.length)];
-        team.push(p1);
-        players.splice(players.findIndex(f => f.discord?.user.id === p1.discord?.user.id), 1);
-        let tMetrics: TeamMetrics = this.teamMetrics(team);
+    private generateTeam(players: Set<Player>, tabMetrics: Metrics, tolerance: number): Team | null{
+        const team: Team = new Team(this.maxTeamSize, );
+        const p1: Player = players.rand();
+        team.add(p1);
+        players.delete(p1);
+        let teamMetrics: Metrics = team.metrics();
         while (
-            (tMetrics.teamCombineMmr * 100 / metrics.median > (100 + tolerance) ||
-            tMetrics.teamCombineMmr * 100 / metrics.median < (100 - tolerance)) &&
-            players.length > 0
+            (teamMetrics.combined * 100 / tabMetrics.median > (100 + tolerance) ||
+            teamMetrics.combined * 100 / tabMetrics.median < (100 - tolerance)) &&
+            players.size > 0
         )
         {
-            if (team.length === this.maxTeamSize) {
-                return null;
-            }
-
-            players = players.filter(p2 => {
-                return (p2.mmr + tMetrics.teamCombineMmr) * 100 / metrics.median < (100 + tolerance)
-            });
-            if (players.length > 0) {
-                const potPlayers: any = players.map(player => ({
-                    ...player,
-                    deviation : Math.abs(((player.mmr + tMetrics.teamCombineMmr) * 100 / metrics.median) - 100)
-                })).sort((a, b) => a.deviation - b.deviation);
-                const p2 = potPlayers[0];
-                team.push(p2);
-                players.splice(players.findIndex(f => f.discord?.user.id === p2.discord?.user.id), 1);
-            }
-            else {
-                return null;
-            }
-            tMetrics = this.teamMetrics(team);
+            if (team.size === this.maxTeamSize) return null;
+            const p2 = this.findMates(team, players, tabMetrics, tolerance);
+            if (!p2) return null;
+            team.add(p2);
+            players.delete(p2);
+            teamMetrics = team.metrics();
         }
         return team;
     }
 
-    private teamsHealthCheck(teams: Team[], players: Player[]): void {
-        const playersInTeam = new Set<string>();
-        teams.forEach(team => {
-             team.forEach(player => {
-                if (playersInTeam.has(player.discord?.user.id as string)) {
-                    console.error("TEAMS : ", JSON.stringify(teams, null, 2), "\n");
-                    console.error("PARTICIPANTS : ", JSON.stringify(players, null, 2), "\n");
-                    console.error("PLAYERS IN TEAMS : ", JSON.stringify(Array.from(playersInTeam), null, 2), player, "\n");
-                    throw Error ("Player duplication error encountered.");
-                }
-                playersInTeam.add(player.discord?.user.id as string);
-             })
-        })
-        if (playersInTeam.size !== players.length) {
-            console.error("TEAMS : ", JSON.stringify(teams, null, 2), "\n");
-            console.error("PARTICIPANTS : ", JSON.stringify(players, null, 2), "\n");
-            throw Error (`Team generation failed to add all players in teams, ${players.length} participants vs ${playersInTeam.size} players in teams`);
-        }
-    }
+    private findMates(team: Team, players: Set<Player>, tabMetrics: Metrics, tolerance: number): Player | null {
 
-    private teamsMetrics(teams: Team[]): TeamsMetrics {
-        if (teams.length > 0) {
-            let highestTeam: number = this.teamMetrics(teams[0]).teamCombineMmr;
-            let lowestTeam: number = this.teamMetrics(teams[0]).teamCombineMmr;
-            const teamsMmr: number[] = [];
-        
-            teams.forEach(team => {
-                const metrics = this.teamMetrics(team);
-                teamsMmr.push(metrics.teamCombineMmr);
-                if (!highestTeam || metrics.teamCombineMmr > highestTeam) highestTeam = metrics.teamCombineMmr;
-                if (!lowestTeam || metrics.teamCombineMmr < lowestTeam) lowestTeam = metrics.teamCombineMmr;
-            });
-        
-            return {
-                highestTeam,
-                lowestTeam,
-                average : this.getAverage(teamsMmr),
-                median : this.getMedian(teamsMmr)
-            };
-        }
-        else {
-            console.error(teams);
-            throw Error("Internal error")
-        }
-    }
-    
-    private teamMetrics(team: Team): TeamMetrics {
-        let teamCombineMmr: number = 0;
-        team.forEach(player => {
-            teamCombineMmr += player?.mmr;
+        players = players.filter(p2 => {
+            return (p2.mmr + team.metrics().combined) * 100 / tabMetrics.median < (100 + tolerance)
         });
-    
-        return {
-            teamAverageMmr : this.getAverage(team.map(player => player.mmr)),
-            teamCombineMmr
+        if (players.size > 0) { // TODO SEARCH WITH PLAYERS COMBINATION
+            const potPlayers = players.map<Player & { deviation: number; }>(player => ({
+                ...player,
+                deviation: Math.abs(((player.mmr + team.metrics().combined) * 100 / tabMetrics.median) - 100)
+            })) as Set<Player & {deviation: number}>;
+            let playerWithSmallestDeviation: Player & {deviation: number} = potPlayers.rand();
+            potPlayers.forEach(player => {
+                if (player.deviation < playerWithSmallestDeviation.deviation) playerWithSmallestDeviation = player;
+            });
+            const p2: Player = players.find(player => player.id === playerWithSmallestDeviation.id)!;
+            return p2;
+        }
+        else {
+            return null;
         }
     }
 
-    private findHighestRank(players: Player[]): string | null {
+    private findHighestRank(players: Set<Player>): Rank | null {
         let highest = {
-            rank : "",
-            mmr : 0
+            rank : players.first().rank,
+            mmr : players.first().mmr
         };
-        if (players.length === 1) {
-            highest = {
-                rank : players[0].rank.name, 
-                mmr : players[0].mmr,
-            };
-        }
 
-        else {
-            players.forEach(player => {
-                if (player.mmr > highest.mmr) {
-                    highest = {
-                        rank : player.rank.name, 
-                        mmr : player.mmr,
-                    };
-                }
-            });
-        }
+        players.forEach(player => {
+            if (player.mmr > highest.mmr) {
+                highest = {
+                    rank : player.rank, 
+                    mmr : player.mmr,
+                };
+            }
+        });
 
-        // Could cause problems but we need some kind a breakdown below GC1    
+        // NOTE Could cause problems but we need some kind a breakdown below GC1    
         // if (highest.mmr < this.computeRankMmr("gc1")) return null;
 
         return highest.rank
     }
+}
 
-    private computePlayersMmr(players: Participant[]): Player[] {
-        return players.map<Player>((player: Participant) => {
-            try {
-                (player as Player).mmr = this.computeRankMmr(player.rank.name);
-            }
-            catch {
-                throw Error(`Unable to compute player ${player.discord?.nickname} MMR with rank ${player.rank.name}`);
-            }
-            return player as Player;
+export class Tab {
+    public readonly teams: Set<Team> = new Set();
+    public readonly size = this.teams.size;
+
+    constructor(teams ?: Set<Team>) {
+        if (teams) {
+            teams.forEach(team => {
+                this.add(team);
+            })
+        }
+    }
+
+    public add(team: Team): Set<Team> {
+        const teamHealth = team.healthCheck();
+        if (!teamHealth.isHealthy) throw new Error("Unhealthy team can't be added in the tab : " + teamHealth.status);
+        else {
+            return this.teams.add(team);
+        }
+    }
+
+    public delete(team: Team): boolean {
+        if (!this.teams.has(team)) throw new Error("This team doesn't belong to this tab");
+        else {
+            return this.teams.delete(team);
+        }
+    }
+
+    public metrics(): Metrics {
+        let combined: number = 0;
+        let highest: Team = this.teams.first();
+        let lowest: Team = this.teams.first();
+        this.teams.forEach(team => {
+            const metrics = team.metrics();
+            combined += metrics.combined;
+            if (metrics.combined > highest.metrics().combined) highest = team;
+            if (metrics.combined < lowest.metrics().combined) lowest = team;
         });
-    }
-
-    private computeRankMmr(rank: string): number {
-        const seed =  this.ranks.find(r => r.name === rank);
-        if (!!seed) return Math.floor(Math.pow(seed.seed, 1 + (this.modifier / 100)))
-        else throw new Error("Can't find rank");
-    }
-
-    private getRandomInt(max: number): number {
-        return Math.floor(Math.random() * max);
-    }
-
-    private getMedian(numbers: number[]): number {
-        if (numbers.length === 1)
-            return numbers[0];
-        if (numbers.length % 2 === 0)
-            return (numbers[Math.floor(numbers.length / 2)] + numbers[Math.ceil(numbers.length / 2)]) / 2;
-        else
-            return numbers[(numbers.length + 1) / 2];
-    }
     
-    private getAverage(numbers: number[]): number {
-        let total: number = 0;
-        numbers.forEach(number => total += number);
-        return Math.floor(total / numbers.length);
+        return {
+            average : Math.avg(Array.from(this.teams.map<number>(team => team.metrics().combined) as unknown as Set<number>)),
+            median: Math.median(Array.from(this.teams.map<number>(team => team.metrics().combined) as unknown as Set<number>)),
+            combined,
+            highest,
+            lowest
+        }
+    }
+
+    public healthCheck(players: Set<Player>): Health {
+        let status: string | undefined;
+        let isHealthy: boolean = true;
+
+        const playersInTeam: Set<Player> = new Set<Player>();
+        this.teams.forEach(team => {
+             team.players.forEach(player => {
+                if (playersInTeam.has(player)) {
+                    console.error("TEAMS : ", JSON.stringify(this.teams, null, 2), "\n");
+                    console.error("PARTICIPANTS : ", JSON.stringify(players, null, 2), "\n");
+                    console.error("ERROR ENCOUNTERED ON PLAYER : ", JSON.stringify(player, null, 2), player, "\n");
+                    isHealthy = false;
+                    status = "Player duplication error encountered";
+                }
+                playersInTeam.add(player);
+             })
+        })
+        if (playersInTeam.size !== players.size) {
+            console.error("TEAMS : ", JSON.stringify(this.teams, null, 2), "\n");
+            console.error("PARTICIPANTS : ", JSON.stringify(players, null, 2), "\n");
+            isHealthy = false;
+            status = `Team generation failed to add all players in teams, ${players.size} participants vs ${playersInTeam.size} players in teams`;
+        }
+
+        return {
+            isHealthy,
+            status
+        }
+    }
+}
+
+export class Team {
+
+    public readonly players: Set<Player> = new Set();
+    public readonly size = this.players.size;
+
+    private maxTeamSize!: number;
+
+    constructor (maxTeamSize: number, players?: Set<Player>) {
+        if (maxTeamSize === undefined) throw new Error("The team max size can't be undefined");
+        if (maxTeamSize === null) throw new Error("The team max size can't be null");
+        if (maxTeamSize === NaN) throw new Error("The team max size must be a number");
+        this.maxTeamSize = maxTeamSize;
+
+        if (players && players.size > this.maxTeamSize) throw new Error("You can't initialize a team with more players than max team size");
+        if (players) players.forEach(player => this.add(player));
+    }
+
+    public add(player: Player): Set<Player> {
+        if (this.players.size >= this.maxTeamSize) throw new Error("Can't add player to team or team size will exceed max team size");
+        else {
+            return this.players.add(player);
+        }
+    }
+
+    public delete(player: Player): boolean {
+        if (!this.players.has(player)) throw new Error("This player doesn't belong to this team");
+        else {
+            return this.players.delete(player);
+        }
+    }
+
+    public metrics(): Metrics {
+        let combined: number = 0;
+        let highest: Player = this.players.first();
+        let lowest: Player = this.players.first();
+        this.players.forEach(player => {
+            combined += player.mmr;
+            if (player.mmr > highest.mmr) highest = player;
+            if (player.mmr < lowest.mmr) lowest = player;
+        });
+    
+        return {
+            average : Math.avg(Array.from(this.players.map<number>(player => player.mmr) as unknown as Set<number>)),
+            median: Math.median(Array.from(this.players.map<number>(player => player.mmr) as unknown as Set<number>)),
+            combined,
+            highest,
+            lowest
+        }
+    }
+
+    public healthCheck(): Health {
+        let status: string | undefined;
+        let isHealthy: boolean = true;
+
+        if (this.players.size === 0) {
+            isHealthy = false;
+            status = "There is no players in this team";
+        }
+
+        if (this.players.size > this.maxTeamSize) {
+            isHealthy = false;
+            status = "There is more players than allowed in this team";
+        }
+
+        return {
+            isHealthy,
+            status
+        }
+    }
+}
+
+export class Player {
+    public readonly id!: string;
+    public readonly name!: string;
+    public readonly rank!: Rank;
+    public readonly mmr!: number;
+
+    constructor(id: string, name: string, rank: Rank, rankingModifier: number) {
+        if (id === undefined) throw new Error("A player id can't be undefined");
+        if (id === null) throw new Error("A player id can't be null");
+        if (typeof id === "string") throw new Error("A player id must be a string");
+        this.id = id;
+
+        if (name === undefined) throw new Error("A player name can't be undefined");
+        if (name === null) throw new Error("A player name can't be null");
+        if (typeof name === "string") throw new Error("A player name must be a string");
+        this.name = name;
+    
+        if (rank === undefined) throw new Error("A player rank can't be undefined");
+        if (rank === null) throw new Error("A player rank can't be null");
+        if (rank.name === undefined) throw new Error("A rank name can't be undefined");
+        if (rank.name === null) throw new Error("A rank name can't be null");
+        if (typeof rank.name === "string") throw new Error("A rank name must be a string");
+        if (rank.seed === undefined) throw new Error("A rank seed can't be undefined");
+        if (rank.seed === null) throw new Error("A rank seed can't be null");
+        if (rank.seed === NaN) throw new Error("A rank seed must be a number");
+        this.rank = rank;
+    
+        if (rankingModifier === undefined) throw new Error("The ranking modifier can't be undefined");
+        if (rankingModifier === null) throw new Error("The ranking modifier can't be null");
+        if (rankingModifier === NaN) throw new Error("The ranking modifier must be a number");
+        this.mmr = Math.floor(Math.pow(this.rank.seed, 1 + (rankingModifier / 100)));
     }
 }

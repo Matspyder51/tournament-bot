@@ -187,17 +187,17 @@ export abstract class BracketController {
 		}
 	}
 
-	public static SetMatchResult(matchId: number, winnedBy: number, force?: boolean): boolean {
+	public static SetMatchResult(matchId: number, winnedBy: number, force?: boolean): boolean | string {
 		const match = this._bracket.matchs[this._bracket.current_round][matchId];
 		if (!match)
-			return false;
+			return 'Match introuvable';
 
 		if (!match.downTeam || !match.upTeam)
-			return false;
+			return 'Veuillez préciser une équipe';
 
 		if (match.winnedBy != undefined) {
 			if (!force)
-				return false;
+				return 'Ce match a déjà un résultat';
 
 			else {
 				this._bracket.qualified_teams.splice(this._bracket.qualified_teams.findIndex(x => x == (match.winnedBy == WinnerTeam.UP ? match.upTeam : match.downTeam)), 1);
@@ -282,9 +282,10 @@ new Command('win', (interaction: Discord.CommandInteraction) => {
 		return;
 
 	const isUpTeam = match.upTeam?.players.findIndex(x => x.discord == interaction.member) != -1 ? true : false;
+	const settedResult = BracketController.SetMatchResult(BracketController.bracket.matchs[BracketController.bracket.current_round].indexOf(match), isUpTeam ? WinnerTeam.UP : WinnerTeam.DOWN);
 
-	if (!BracketController.SetMatchResult(BracketController.bracket.matchs[BracketController.bracket.current_round].indexOf(match), isUpTeam ? WinnerTeam.UP : WinnerTeam.DOWN)) {
-		interaction.reply('Une erreur est survenue');
+	if (settedResult != true) {
+		interaction.reply(`Erreur: ${settedResult}`);
 	}
 
 	interaction.reply('Votre équipe est déclarée vainqueur', {ephemeral: true});

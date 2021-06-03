@@ -786,47 +786,6 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 	}
 ]);
 
-
-// RegisterSubCommand("team", "roll", (from: Discord.GuildMember, args: string[], message: Discord.Message) => {
-// 	if (TournamentController.state != TournamentState.WAITING)
-// 		return message.reply("Veuillez fermer les inscriptions au tournoi avant de modifier des équipes");
-// 	else {
-
-// 		const maxTeamSize = Number(args[0]);
-// 		const rankingModifier = Number(args[1]);
-
-// 		if (maxTeamSize == NaN)
-// 			return message.reply("Veuillez preciser la taille maximum des equipes");
-
-// 		if (maxTeamSize > 4)
-// 			return message.reply("La taille des equipes ne peut pas depasser 4 joueurs");
-			
-// 		// reset teams
-
-// 		TournamentController.teams.forEach((team, index) => {
-// 			TournamentController.DeleteTeam(index);
-// 		})
-
-// 		// generate teams
-// 		const teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier || 60);
-		
-// 		for (const team of teams) {
-// 			const playersIndex: number[] = [];
-// 			for (const player of team) {
-// 				const a = TournamentController.participants.findIndex(p => {
-// 					return p.discord?.id === player.discord?.id
-// 				})
-// 				if (a !== -1) playersIndex.push(a);
-// 			}
-// 			const newTeam = TournamentController.AddTeam(playersIndex);
-			
-// 			if (!newTeam) return message.reply('Une erreur est survenue');
-// 		}
-
-// 		TournamentController.RefrestTeamsListToDiscord(message.channel as Discord.TextChannel);
-// 	}
-// }, true);
-
 new Command('start', (interaction: Discord.CommandInteraction) => {
 	if (TournamentController.teams.length < 2)
 		return interaction.reply('Tu essaye de lancer un tournoi sans équipes mdr', {ephemeral: true});

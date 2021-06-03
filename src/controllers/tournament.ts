@@ -319,12 +319,16 @@ export abstract class TournamentController {
 		return messages;
 	}
 
-	public static OpenRegistrations(reopen?: boolean): boolean {
+	public static OpenRegistrations(reopen?: boolean, wait_duration?: number): boolean | [boolean, number] {
 		if (this._state != TournamentState.CLOSED && (!reopen || this._state != TournamentState.WAITING))
 			return false;
 
+		if (wait_duration != null) {
+			this.memberSince = wait_duration * (3600000);
+		}
+
 		this._state = TournamentState.REGISTERING;
-		return true;
+		return [true, this.memberSince];
 	}
 
 	public static CloseRegistrations(): boolean {
@@ -417,7 +421,7 @@ new Command('participants', async (interaction: Discord.CommandInteraction, args
 	}
 ]);
 
-new Command('open', (interaction: Discord.CommandInteraction) => {
+new Command('open', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 	if (TournamentController.state != TournamentState.CLOSED)
 		return interaction.reply('Un tournoi est déjà en cours', {ephemeral: true});
 
@@ -426,13 +430,21 @@ new Command('open', (interaction: Discord.CommandInteraction) => {
 	if (DEBUG_MODE)
 		SetDebugParticipants(interaction.member);
 
-	if (TournamentController.OpenRegistrations()) {
-		interaction.reply('Ouverture des inscriptions');
+	const result = TournamentController.OpenRegistrations(undefined, args[0]?.value as number);
+
+	if ((result instanceof Array && result[0])) {
+		interaction.reply(`Ouverture des inscriptions, les joueurs ayant rejoins le Discord depuis moins de ${result[1] / 3600000} heures ne pourront pas s'inscrire`);
 	}
 }, {
 	isAdmin: true,
 	description: 'Ouvre les inscriptions pour un tournoi'
-});
+}, [
+	{
+		name: 'time_to_join',
+		description: 'Depuis combien de temps un utilisateur doit avoir rejoins le discord (En heures)',
+		type: 4
+	}
+]);
 
 new Command('reopen', (interaction: Discord.CommandInteraction) => {
 	if (TournamentController.state != TournamentState.WAITING)

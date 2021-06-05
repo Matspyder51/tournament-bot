@@ -89,18 +89,14 @@ class Bot {
 	public AddSticky(channel: Discord.TextChannel, message: string): number {
 		const nextId = (this.stickiesMessages[this.stickiesMessages.length - 1]?.id || 0) + 1;
 
-		this.stickiesMessages.push({
-			id: nextId,
-			channel: channel.id,
-			message
+		channel.send(message).then((msg) => {
+			this.stickiesMessages.push({
+				id: nextId,
+				channel: channel.id,
+				message,
+				msg
+			});
 		});
-
-		// channel.send(message).then((msg) => {
-		// 	const m = this.stickiesMessages.find(x => x.id == nextId);
-		// 	if (!m)
-		// 		return;
-		// 	m.msg = msg;
-		// });
 
 		return nextId;
 	}

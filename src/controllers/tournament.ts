@@ -421,6 +421,7 @@ new Command('participants', async (interaction: Discord.CommandInteraction, args
 	}
 ]);
 
+let stickMsg: number;
 new Command('open', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 	if (TournamentController.state != TournamentState.CLOSED)
 		return interaction.reply('Un tournoi est déjà en cours', {ephemeral: true});
@@ -435,6 +436,8 @@ new Command('open', (interaction: Discord.CommandInteraction, args: Discord.Comm
 	if ((result instanceof Array && result[0])) {
 		interaction.reply(`Ouverture des inscriptions, les joueurs ayant rejoins le Discord depuis moins de ${result[1] / 3600000} heures ne pourront pas s'inscrire`);
 	}
+
+	stickMsg = Bot.AddSticky(interaction.channel as Discord.TextChannel, 'Pour vous inscire, tapez la commande **/register**, vous verrez alors l\'autocomplétion apparaître, renseignez votre rang maximum atteint sur le jeu');
 }, {
 	isAdmin: true,
 	description: 'Ouvre les inscriptions pour un tournoi'
@@ -452,6 +455,8 @@ new Command('reopen', (interaction: Discord.CommandInteraction) => {
 
 	if (TournamentController.OpenRegistrations(true))
 		interaction.reply('Réouverture des inscriptions pour le tournoi');
+
+	stickMsg = Bot.AddSticky(interaction.channel as Discord.TextChannel, 'Pour vous inscire, tapez la commande **/register**, vous verrez alors l\'autocomplétion apparaître, renseignez votre rang maximum atteint sur le jeu');
 }, {
 	isAdmin: true,
 	description: 'Réouvre les inscriptions au tournoi'
@@ -463,6 +468,8 @@ new Command('close', (interaction: Discord.CommandInteraction) => {
 
 	if (TournamentController.CloseRegistrations())
 		interaction.reply('Fermeture des inscriptions pour le tournoi');
+
+	Bot.RemoveSticky(stickMsg, true);
 }, {
 	isAdmin: true,
 	description: 'Fermer les inscriptions au tournoi'

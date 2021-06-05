@@ -770,6 +770,8 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 // }, true);
 
 new Command('start', (interaction: Discord.CommandInteraction) => {
+	if (TournamentController.teams.length < 2)
+		return interaction.reply('Tu essaye de lancer un tournoi sans équipes mdr', {ephemeral: true});
 	BracketController.Initialize();
 
 	TournamentController.ClearSavedTournament();

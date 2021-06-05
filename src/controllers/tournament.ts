@@ -48,6 +48,8 @@ export abstract class TournamentController {
 	private static participantsMsg: Discord.Message[];
 	private static teamMsg: Discord.Message[];
 
+	private static _newParticipants: Participant[] = [];
+
 	public static memberSince = 10800000;
 
 	public static AddTeam(membersIndexes: number[]): Team | undefined {
@@ -156,14 +158,25 @@ export abstract class TournamentController {
 		if (!DEBUG_MODE && this.IsPlayerInTournament(discord))
 			return 'Vous êtes déjà inscrit dans le tournoi';
 
-		this._participants.push(new Participant(discord, rank));
+		const part = new Participant(discord, rank);
+		this._participants.push(part);
 
 		this.SaveTournament();
 
 		if (!force) {
+			this._newParticipants.push(part);
 			const channel = Bot.guild.channels.resolve(Config.Admin.RegisterLogsChannel);
 			if (channel != null && channel.isText()) {
-				channel.send(`${discord} s'est inscrit au tournoi en tant que ${rank.emoji} (Nombre de participants: ${this._participants.length})`);
+				setTimeout((channel: Discord.TextChannel) => {
+					if (this._newParticipants.length > 0) {
+						let content = this._newParticipants.map((x) => `${x.discord} s'est inscrit au tournoi en tant que ${x.rank.emoji}`).join('\n');
+						content += `\n(Nombre de participants: ${this._participants.length})`;
+						
+						channel.send(content);
+
+						this._newParticipants = [];
+					}
+				}, 10000, channel);
 			}
 		}
 

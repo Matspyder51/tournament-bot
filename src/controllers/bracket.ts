@@ -80,6 +80,7 @@ export abstract class BracketController {
 		const messages = [];
 		let desc = `Liste des matchs du tour ${this._bracket.current_round + 1} :\n`;
 
+		let inProgressMatches = [];
 		let isFirst = true;
 		for (let i = 0; i < this._bracket.matchs[this._bracket.current_round].length; i++) {
 			const match = this._bracket.matchs[this._bracket.current_round][i];
@@ -102,12 +103,19 @@ export abstract class BracketController {
 			}
 			toAdd += `${match.winnedBy != undefined && match.winnedBy == WinnerTeam.UP ? '~~' : ''}`;
 			isFirst = false;
+			if (match.winnedBy == undefined)
+				inProgressMatches.push(i + 1);
+
+			if (i == this._bracket.matchs[this._bracket.current_round].length - 1) {
+				toAdd += `\n\n_${inProgressMatches.length} matchs en cours (${inProgressMatches.join(', ')})_`;
+			}
 
 			if (desc.length + toAdd.length > 2000) {
 				messages.push(desc);
 				desc = '';
 			}
 			desc += toAdd;
+			
 		}
 
 		messages.push(desc);
@@ -168,7 +176,7 @@ export abstract class BracketController {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 				if (!DEBUG_MODE)
-					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **||${roomName}||\n**Mot de passe: **||${roomPassword}||`);
+					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **||${roomName}||\n**Mot de passe: **||${roomPassword}||\n\nN'oublie pas de rentrer la commande /win si ton équipe est victorieuse à la fin du match\n\nLe match se joue en BO3 (Best of 3), Aucun mutateur ne doit être activé\nPour éviter tout problème visuel ou de performance, la map doit faire partie de cette liste : DFH Stadium (Neige interdite), Mannfield (Neige interdite), Champions Field, Beckwith Park, Utopia Coliseum (Neige interdite), Forbidden Temple\n\n :warning: **Les démolitions sont strictement interdites en cas de supériorité numérique** (Vous n'avez pas le droit de démo une équipe de 2 si vous êtes 3, mais l'équipe de 2 **a le droit** de vous démolir, le tournoi étant un tournoi fun, merci de ne pas abuser des démolitions si vous avez le droit), cette règle s'applique à tous les matchs saufs ceux contre des SSL, pour plus d'informations, n'hésitez pas à poser la question sur le stream de Perceval`);
 			}
 			desc += ' **VS** ';
 			isFirst2 = true;
@@ -176,7 +184,7 @@ export abstract class BracketController {
 				desc += `${!isFirst2 ? ' - ' : ''}${player.toString()}`;
 				isFirst2 = false;
 				if (!DEBUG_MODE)
-					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **||${roomName}||\n**Mot de passe: **||${roomPassword}||`);
+					(await player.discord?.createDM())?.send(`Identifiants de la partie :\n**Nom: **||${roomName}||\n**Mot de passe: **||${roomPassword}||\n\nN'oublie pas de rentrer la commande /win si ton équipe est victorieuse à la fin du match\n\nLe match se joue en BO3 (Best of 3), Aucun mutateur ne doit être activé\nPour éviter tout problème visuel ou de performance, la map doit faire partie de cette liste : DFH Stadium (Neige interdite), Mannfield (Neige interdite), Champions Field, Beckwith Park, Utopia Coliseum (Neige interdite), Forbidden Temple\n\n :warning: **Les démolitions sont strictement interdites en cas de supériorité numérique** (Vous n'avez pas le droit de démo une équipe de 2 si vous êtes 3, mais l'équipe de 2 **a le droit** de vous démolir, le tournoi étant un tournoi fun, merci de ne pas abuser des démolitions si vous avez le droit), cette règle s'applique à tous les matchs saufs ceux contre des SSL, pour plus d'informations, n'hésitez pas à poser la question sur le stream de Perceval`);
 			}
 			isFirst = false;
 			desc += ` ||${roomName}|| ||${roomPassword}||`;

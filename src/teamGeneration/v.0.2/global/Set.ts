@@ -1,3 +1,4 @@
+export {};
 declare global {
     interface Set<T> {
         find(callbackfn: (element: T, index?: number, set?: Set<T>) => boolean): T | undefined ; 
@@ -67,5 +68,3 @@ Set.prototype.map = function (this: Set<any>, callbackfn: (element: any, index?:
 Set.prototype.clone = function (this: Set<any>): Set<any> {
 	return new Set(this);
 };
-
-export {};

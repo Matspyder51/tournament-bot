@@ -640,7 +640,7 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 			let tab: Tab | null;
 
 			try {
-				tab = new GenerateTeams(players, maxTeamSize, rankingModifier).generateTab();
+				tab = new GenerateTeams(players, maxTeamSize, rankingModifier).generateTab(DEBUG_MODE ? 1 : 100);
 			}
 			catch (error) {
 				console.error(error);

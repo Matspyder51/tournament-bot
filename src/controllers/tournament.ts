@@ -7,11 +7,13 @@ import { Team } from '../models/team';
 import { BracketController } from './bracket';
 import { GetRandomNumber } from '../utils';
 import * as Config from '../config.json';
-import { GenerateTeams, Player } from '../services/generateTeamsNext';
-import { main } from '../services/generateTeams';
+import { main } from '../teamGeneration/v0.1/teamGeneration';
 import { join } from 'path';
 import low from 'lowdb';
 import FileSync from 'lowdb/adapters/FileSync';
+import { Player } from '../teamGeneration/v.0.2/models/Player';
+import { Tab } from '../teamGeneration/v.0.2/models/Tab';
+import { GenerateTeams } from '../teamGeneration/v.0.2/generateTeams';
 
 
 enum TournamentState {
@@ -627,11 +629,11 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 
 	case 'roll':
 		// eslint-disable-next-line no-case-declarations
-		const maxTeamSize = args[0].options?.[0] ? Number(args[0].options?.[0].value) : undefined;
+		const maxTeamSize = args[0].options?.[0] ? Number(args[0].options?.[0].value) : 3;
 		// eslint-disable-next-line no-case-declarations
 		const version = args[0].options?.[1] ? String(args[0].options?.[1]?.value) : 'nextgen';
 		// eslint-disable-next-line no-case-declarations
-		const rankingModifier = args[0].options?.[2] ? Number(args[0].options?.[2]?.value) : undefined;
+		const rankingModifier = args[0].options?.[2] ? Number(args[0].options?.[2]?.value) : 80;
 
 		// reset teams
 		TournamentController.ClearTeams();
@@ -667,39 +669,55 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 		else if (version === 'nextgen') {
 			const players: Set<Player> = new Set();
 
-			TournamentController.participants.forEach(participant => players.add(
-				new Player(
-						participant.discord?.user.id + '' as string,
+			try {
+				TournamentController.participants.forEach((participant, index) => players.add(
+					new Player(
+						DEBUG_MODE ? index + '' : participant.discord?.user.id + '' as string,
 						participant.discord?.user.username as string,
 						{
 							name: participant.rank.name,
 							seed: participant.rank.seed
 						},
-						rankingModifier as number
-				)
-			));
+						rankingModifier
+					)
+				));
+			}
+			catch (error) {
+				console.error(error);
+				return interaction.editReply('Une erreur est survenue lors de la creation des equipes');
+			}
 
-			if (players.size !== TournamentController.participants.length) throw new Error('Il manque des joueurs.');
+			if (players.size !== TournamentController.participants.length) return interaction.editReply('Il manque des joueurs.');
 
-			const tab = new GenerateTeams(players, maxTeamSize, rankingModifier).generateTab();
+			let tab: Tab | null;
+
+			try {
+				tab = new GenerateTeams(players, maxTeamSize, rankingModifier).generateTab();
+			}
+			catch (error) {
+				console.error(error);
+				return interaction.editReply('Une erreur est survenue lors de la creation des equipes');
+			}
 
 			if (tab) {
-				(<Discord.TextChannel>Bot.guild.channels.resolve('840702261008400406')).send(JSON.stringify(tab.teams, null, 2));
+				
+				DEBUG_MODE ? console.log(tab.toString()) :
+					(<Discord.TextChannel>Bot.guild.channels.resolve('840702261008400406')).send(JSON.stringify(tab.teams, null, 2));
+				
 				tab.teams.forEach(team => {
 					const playersIndex: number[] = [];
 					team.players.forEach(player => {
-						const a = TournamentController.participants.findIndex(p => {
+						const playerIndex = DEBUG_MODE ? parseInt(player.id) : TournamentController.participants.findIndex(p => {
 							return p.discord?.id === player.id;
 						});
-						if (a !== -1) playersIndex.push(a);
+						if (playerIndex !== -1) playersIndex.push(playerIndex);
 					});
 					const newTeam = TournamentController.AddTeam(playersIndex);
-								
 					if (!newTeam) {
-						TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
 						return interaction.editReply(`Impossible de créer une des équipes (${playersIndex.join(', ')})`);
 					}
 				});
+
 				TournamentController.RefrestTeamsListToDiscord(interaction.channel as Discord.TextChannel);
 				return interaction.editReply('Equipes générées');
 			}

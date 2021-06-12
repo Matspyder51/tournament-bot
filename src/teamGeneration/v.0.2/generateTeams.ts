@@ -4,12 +4,8 @@
 todos :
 - combinatorial search for players to team (instead of looking for 1 mate at a time, include in the potential mates array of players combination that could fill the team)
 - mates comparison between teams (when creating a team look for other team with similar size players rank to improve equity between teams)
-- Full unit testing
-- end to end test
-- players and result on disk logging for statistics extract
 - gc1 breakdown for solo teams
 - exponantial regression to find best equation for rank calculation
-
 */
 
 import { Player } from './models/Player';
@@ -18,8 +14,8 @@ import { Team } from './models/Team';
 import { Metrics } from './types/Metrics';
 import { Rank } from './types/Rank';
 
-import {} from './global/Math';
-import {} from './global/Set';
+require('./global/Math');
+require('./global/Set');
 
 export class GenerateTeams {
 
@@ -42,9 +38,9 @@ export class GenerateTeams {
     	this.players = players;
     }
 
-    public generateTab(): Tab | null{
+    public generateTab(limit: number): Tab | null{
     	const tabs: {tab: Tab, tolerance: number}[] = [];
-    	for(let i = 0; i < 1; i++) {
+    	for(let i = 0; i < limit; i++) {
     		const result = this.generateTeams();
     		try {
     			if (result.tab.healthCheck(this.players)) {
@@ -108,7 +104,6 @@ export class GenerateTeams {
     			}
     		}
     		else {
-    			console.log('team is null', tolerance);
     			tolerance+= 5;
     			unassignedPlayers = players.clone();
     			tempTeams = tab.teams.clone();
@@ -130,7 +125,7 @@ export class GenerateTeams {
 
     private generateTeam(players: Set<Player>, tabMetrics: Metrics, tolerance: number): Team | null{
     	const team: Team = new Team(this.maxTeamSize);
-    	const p1: Player = players.rand();
+    	const p1: Player = players.first();
     	team.add(p1);
     	players.delete(p1);
     	while (
@@ -186,9 +181,5 @@ export class GenerateTeams {
     	});
 
     	return highest.rank;
-    }
-
-    public selfTest(): void {
-    	return;
     }
 }

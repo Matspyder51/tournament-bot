@@ -92,4 +92,5 @@ dist/
 config.json
 db.json
 
+package-lock.json
 yarn.lock

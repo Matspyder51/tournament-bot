@@ -53,6 +53,10 @@ export abstract class TournamentController {
 
 	public static memberSince = 10800000;
 
+	public static ClearParticipants() {
+		this._participants = [];
+	}
+
 	public static AddTeam(membersIndexes: number[]): Team | undefined {
 		if (membersIndexes.length === 0 ) {
 			return;
@@ -571,6 +575,15 @@ new Command('kick', (interaction: Discord.CommandInteraction, args: Discord.Comm
 		required: true
 	}
 ]);
+
+new Command('clear_participants', (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
+
+	TournamentController.ClearParticipants();
+	interaction.reply('Liste des participants vidée', {ephemeral: true});
+}, {
+	isAdmin: true,
+	description: 'Vide la liste des participants'
+});
 
 new Command('team', async (interaction: Discord.CommandInteraction, args: Discord.CommandInteractionOption[]) => {
 

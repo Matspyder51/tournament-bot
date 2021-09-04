@@ -404,7 +404,12 @@ export abstract class TournamentController {
 			return false;
 
 		const participants = db.get('tournament.participants').value();
-		this._participants = participants.map((x: { id: Discord.GuildMember; rank: string; }) => new Participant(Bot.guild.members.resolve(x.id), GetRankByName(x.rank) || Ranks[0]));
+		participants.forEach((x: any) => {
+			if (x.id == undefined || x.rank == undefined)
+				return;
+
+				this._participants.push(new Participant(Bot.guild.members.resolve(x.id), GetRankByName(x.rank) || Ranks[0]));
+		});
 
 		return true;
 	}

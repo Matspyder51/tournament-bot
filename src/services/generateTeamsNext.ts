@@ -43,7 +43,7 @@ export class GenerateTeams {
             this.players = this.computePlayersMmr(players);
         }
         catch (error) {
-            return error;
+            throw error;
         }
     }
 

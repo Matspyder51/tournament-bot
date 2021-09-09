@@ -4,8 +4,12 @@
 todos :
 - combinatorial search for players to team (instead of looking for 1 mate at a time, include in the potential mates array of players combination that could fill the team)
 - mates comparison between teams (when creating a team look for other team with similar size players rank to improve equity between teams)
-- gc1 breakdown for solo teams
+- gc1 breakdown for solo teams (if maxTeamSize is over 1)
 - exponantial regression to find best equation for rank calculation
+- enforce team's size to be as close as possible to maxTeamSize
+- json file logger
+- replace the use of best player as a targeted mmr
+- send back errors to user
 */
 
 import { Player } from './models/Player';
@@ -13,6 +17,7 @@ import { Tab } from './models/Tab';
 import { Team } from './models/Team';
 import { Metrics } from './types/Metrics';
 import { Rank } from './types/Rank';
+import { Logger } from './utils/logger';
 
 require('./global/Math');
 require('./global/Set');
@@ -21,24 +26,36 @@ export class GenerateTeams {
 
     public readonly maxTeamSize!: number;
     public readonly rankingModifier!: number;
-    public readonly players!: Set<Player>; 
+    public readonly players!: Set<Player>;
 
-    constructor(players: Set<Player>, maxTeamSize = 3, rankingModifier = 80) { 
-    	if (!maxTeamSize) throw Error('Max team size must be defined');
-    	if (typeof maxTeamSize !== 'number') throw Error('Max team size must be a number');
-    	if (maxTeamSize <= 0) throw Error('Max team size must be greater than 0');
-    	if (maxTeamSize > 4) throw Error('Max team size must be less than 4');
-    	this.maxTeamSize = maxTeamSize;
-        
-    	if (!rankingModifier) throw Error('Ranks modifier must be defined');
-    	if (typeof rankingModifier !== 'number') throw Error('Ranks modifier must be a number');
-    	if (rankingModifier < 0) throw Error('Ranks modifier must be greater or equal to 0');
-    	this.rankingModifier = rankingModifier;
+	private debug: boolean;
+	private logger: Logger = new Logger();
 
-    	this.players = players;
-    }
+	constructor(players: Set<Player>, maxTeamSize = 3, rankingModifier = 80, debug = false) { 
+		if (!maxTeamSize) throw Error('Max team size must be defined');
+		if (typeof maxTeamSize !== 'number') throw Error('Max team size must be a number');
+		if (maxTeamSize <= 0) throw Error('Max team size must be greater than 0');
+		if (maxTeamSize > 4) throw Error('Max team size must be less than 4');
+		this.maxTeamSize = maxTeamSize;
+      
+		if (!rankingModifier) throw Error('Ranks modifier must be defined');
+		if (typeof rankingModifier !== 'number') throw Error('Ranks modifier must be a number');
+		if (rankingModifier < 0) throw Error('Ranks modifier must be greater or equal to 0');
+		this.rankingModifier = rankingModifier;
 
-    public generateTab(limit: number): Tab | null{
+		this.debug = debug;
+		this.players = players;
+
+		// if (debug) {
+		// 	console.log('Logger will be used');
+		// 	this.logger.add('debug', debug);
+		// 	this.logger.add('maxTeamSize', maxTeamSize);
+		// 	this.logger.add('rankingModifier', rankingModifier);
+		// 	this.logger.add('players', Array.from(players));
+		// }
+	}
+
+	public generateTab(limit: number): Tab | null{
     	const tabs: {tab: Tab, tolerance: number}[] = [];
     	for(let i = 0; i < limit; i++) {
     		const result = this.generateTeams();
@@ -54,9 +71,9 @@ export class GenerateTeams {
     	}
     	tabs.sort((a, b) => a.tolerance - b.tolerance);
     	return tabs[0].tab;
-    }
+	}
 
-    private generateTeams(): {tab: Tab, tolerance: number} {
+	private generateTeams(): {tab: Tab, tolerance: number} {
     	const highestRank = this.findHighestRank(this.players);
         
     	if (!highestRank){
@@ -80,18 +97,21 @@ export class GenerateTeams {
     	let unassignedPlayers = players.clone();
     	let tempTeams = tab.teams.clone();
     	let tolerance = 0;
+
+    	const tabMetrics = tab.metrics();
     
     	while(unassignedPlayers.size > 0 && tolerance <= 50 && tempTeams.size > 0) {
-    		const team = this.generateTeam(unassignedPlayers.clone(), tab.metrics(), tolerance);
+    		const team = this.generateTeam(unassignedPlayers.clone(), tabMetrics, tolerance);
     		if (team !== null && team.players.size > 0) {
-    			if (team.metrics().combined * 100 / tab.metrics().median < (100 + tolerance) &&
-                team.metrics().combined * 100 / tab.metrics().median > (100 - tolerance)) {
+    			if (team.metrics().combined * 100 / tabMetrics.median < (100 + tolerance) &&
+                team.metrics().combined * 100 / tabMetrics.median > (100 - tolerance)) {
+
     				team.players.forEach(player => {
     					if (unassignedPlayers.has(player)) unassignedPlayers.delete(player);
     					else {
     						console.error(player);
     						console.error(JSON.stringify(Array.from(unassignedPlayers)));
-    						throw new Error('TEAMS GENERATION UNEXPECTED ERROR 1');
+    						throw new Error('TEAMS GENERATION UNEXPECTED ERROR : player doesn\'t exist or has already been assigned to a team');
     					}
     				});
     				tempTeams.add(team);
@@ -100,7 +120,7 @@ export class GenerateTeams {
     				console.error(team.toString());
     				console.error(team.metrics());
     				console.error(tab.metrics());
-    				throw new Error('TEAMS GENERATION UNEXPECTED ERROR 2');
+    				throw new Error('TEAMS GENERATION UNEXPECTED ERROR : team not valid');
     			}
     		}
     		else {
@@ -121,9 +141,9 @@ export class GenerateTeams {
     		tab,
     		tolerance
     	};
-    }
+	}
 
-    private generateTeam(players: Set<Player>, tabMetrics: Metrics, tolerance: number): Team | null{
+	private generateTeam(players: Set<Player>, tabMetrics: Metrics, tolerance: number): Team | null{
     	const team: Team = new Team(this.maxTeamSize);
     	const p1: Player = players.first();
     	team.add(p1);
@@ -141,9 +161,9 @@ export class GenerateTeams {
     		players.delete(p2);
     	}
     	return team;
-    }
+	}
 
-    private findMates(team: Team, players: Set<Player>, tabMetrics: Metrics, tolerance: number): Player | null {
+	private findMates(team: Team, players: Set<Player>, tabMetrics: Metrics, tolerance: number): Player | null {
 
     	players = players.filter(p2 => {
     		return (p2.mmr + team.metrics().combined) * 100 / tabMetrics.median < (100 + tolerance);
@@ -163,9 +183,9 @@ export class GenerateTeams {
     	else {
     		return null;
     	}
-    }
+	}
 
-    private findHighestRank(players: Set<Player>): Rank | null {
+	private findHighestRank(players: Set<Player>): Rank | null {
     	let highest = {
     		rank : players.first().rank,
     		mmr : players.first().mmr
@@ -181,5 +201,5 @@ export class GenerateTeams {
     	});
 
     	return highest.rank;
-    }
+	}
 }

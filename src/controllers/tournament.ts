@@ -11,9 +11,9 @@ import { main } from '../teamGeneration/v0.1/teamGeneration';
 import { join } from 'path';
 import low from 'lowdb';
 import FileSync from 'lowdb/adapters/FileSync';
-import { Player } from '../teamGeneration/v.0.2/models/Player';
-import { Tab } from '../teamGeneration/v.0.2/models/Tab';
-import { GenerateTeams } from '../teamGeneration/v.0.2/generateTeams';
+import { Player } from '../teamGeneration/v.0.1.2/models/Player';
+import { Tab } from '../teamGeneration/v.0.1.2/models/Tab';
+import { main as mainv2} from '../teamGeneration/v.0.1.2/teamGeneration';
 
 
 enum TournamentState {
@@ -689,15 +689,16 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 
 			if (players.size !== TournamentController.participants.length) return interaction.editReply('Il manque des joueurs.');
 
-			let tab: Tab | null;
+			let tab: Tab;
 
 			try {
-				tab = new GenerateTeams(players, maxTeamSize, rankingModifier, DEBUG_MODE).generateTab(DEBUG_MODE ? 1 : 100);
+				tab = mainv2(players, Ranks, maxTeamSize, rankingModifier);
 			}
 			catch (error) {
 				console.error(error);
 				return interaction.editReply('Une erreur est survenue lors de la creation des equipes');
 			}
+      console.log(tab)
 
 			if (tab) {
 				

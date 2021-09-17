@@ -640,9 +640,7 @@ new Command('team', async (interaction: Discord.CommandInteraction, args: Discor
 		// eslint-disable-next-line no-case-declarations
 		let teams;
 		if (version === 'legacy') {
-			// teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
-
-			return interaction.editReply(`Version legacy désactivée`);;
+			teams = main(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);
 		}
 		else if (version === 'nextgen') {
 			teams = new GenerateTeams(TournamentController.participants, Ranks, maxTeamSize, rankingModifier);

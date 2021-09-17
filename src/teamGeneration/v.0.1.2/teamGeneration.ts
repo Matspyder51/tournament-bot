@@ -19,13 +19,8 @@ export function main(
 
   for (let i = 0; i < 100; i++) {
     console.log(i);
-    const tab$ = generateTeams(players, new Tab(), ranks, maxTeamSize, modifier);
-    const timeout$ = new Promise((resolve, reject) => {
-      let wait = setTimeout(() => {
-        clearTimeout(wait);
-        resolve("");
-      }, 1)
-    });
+    const tab$ = new Promise(async (res) => res(await generateTeams(players, new Tab(), ranks, maxTeamSize, modifier)));
+    const timeout$ = new Promise((res) => setTimeout(() => res(null), 200));
     Promise.race([
       tab$,
       timeout$
@@ -92,7 +87,6 @@ async function generateTeams(
 
   for (let nbTeams = 0; players.size > 0 && nbTeams < 1000; nbTeams++) {
 
-    console.log("nb" ,nbTeams)
     const metrics = teamsMetrics(tab.teams);
     const team = generateTeam(players, metrics, maxTeamSize);
     if (team.size > 0) {

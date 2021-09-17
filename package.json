@@ -7,7 +7,7 @@
     "dev": "tsc -p ./src/ -w",
     "build": "tsc -p ./src/",
     "start": "node -r source-map-support/register ./dist/main.js",
-    "test": "tsc -p ./src/services/testGenerateTeams.ts",
+    "test": "ts ./src/teamGeneration/v.0.2/test.ts",
     "---Docker---": "",
     "docker up": "docker-compose -f ./Docker/docker-compose.yml -p bot-tournoi up --build",
     "docker down": "docker-compose -f ./Docker/docker-compose.yml -p bot-tournoi down"

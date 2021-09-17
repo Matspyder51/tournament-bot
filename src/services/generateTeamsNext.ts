@@ -28,7 +28,7 @@ export class GenerateTeams {
     private maxTeamSize: number;
     private modifier: number;
 
-    constructor(players: Participant[], ranks: Rank[], maxTeamSize: number = 3, modifier: number = 150) {
+    constructor(players: Participant[], ranks: Rank[], maxTeamSize: number = 3, modifier: number = 60) {
         this.ranks = ranks;
 
         if (maxTeamSize <= 0) throw Error("Max team size must  be greater than 0");

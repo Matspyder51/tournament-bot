@@ -27,7 +27,7 @@ export function main(players: Player[], ranks: Rank[], maxTeamSize: number = 3, 
     
     const tabs = [];
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 100; i++) {
         tabs.push(generateTeams(players, [], ranks, maxTeamSize, modifier));
     }
 

@@ -17,13 +17,28 @@ export function main(
 ): Tab {
   const tabs: Tab[] = [];
 
-  for (let i = 0; i < 10000; i++) {
-    tabs.push(generateTeams(players, new Tab(), ranks, maxTeamSize, modifier));
+  for (let i = 0; i < 100; i++) {
+    console.log(i);
+    const tab$ = generateTeams(players, new Tab(), ranks, maxTeamSize, modifier);
+    const timeout$ = new Promise((resolve, reject) => {
+      let wait = setTimeout(() => {
+        clearTimeout(wait);
+        resolve("");
+      }, 1)
+    });
+    Promise.race([
+      tab$,
+      timeout$
+    ]).then(res => {
+      if (res) {
+        tabs.push(res as Tab);
+      }
+    })
   }
 
   let best: Tab = tabs[0];
   tabs.forEach((tab) => {
-    if (teamsHealthCheck(tab.teams, players)) {
+    if (tab && teamsHealthCheck(tab.teams, players)) {
       if (best === null) {
         best = tab;
       } else {
@@ -40,6 +55,7 @@ export function main(
       }
     }
   });
+  console.log(best)
   return best;
 }
 
@@ -55,13 +71,13 @@ function teamsHealthCheck(teams: Set<Team>, players: Set<Player>): boolean {
   return true;
 }
 
-function generateTeams(
+async function generateTeams(
   players: Set<Player>,
   tab: Tab,
   ranks: Rank[],
   maxTeamSize: number,
   modifier: number
-): Tab {
+): Promise<Tab> {
   const highestRank = findHighestRank(players, ranks, modifier);
 
   if (highestRank !== null) {
@@ -75,6 +91,8 @@ function generateTeams(
   }
 
   for (let nbTeams = 0; players.size > 0 && nbTeams < 1000; nbTeams++) {
+
+    console.log("nb" ,nbTeams)
     const metrics = teamsMetrics(tab.teams);
     const team = generateTeam(players, metrics, maxTeamSize);
     if (team.size > 0) {
@@ -116,10 +134,6 @@ function generateTeam(
     tMetrics = team.metrics();
   }
   return team;
-}
-
-function getRandomInt(max: number): number {
-  return Math.floor(Math.random() * max);
 }
 
 function teamsMetrics(teams: Set<Team>): Metrics {
